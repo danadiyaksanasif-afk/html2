@@ -1,0 +1,2557 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pretv X One - AI Interface</title>
+
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- KaTeX CDN - buat render rumus matematika/LaTeX -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --panel-bg: rgba(15, 19, 32, 0.8);
+      --panel-border: rgba(99, 102, 241, 0.18);
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --user-msg-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+      --ai-msg-bg: rgba(20, 26, 43, 0.6);
+      --input-bg: rgba(13, 17, 28, 0.9);
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:focus,
+    input:focus,
+    textarea:focus,
+    select:focus,
+    a:focus,
+    div:focus,
+    span:focus {
+      outline: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
+    ::selection {
+      background: rgba(168, 85, 247, 0.3);
+      color: #ffffff;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+      background-image:
+        radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 45%);
+    }
+
+    button, select, textarea { font: inherit; }
+
+    .app-container {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* SIDEBAR */
+    .sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 90;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(10, 13, 22, 0.95);
+      border-right: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* text-transform: uppercase; HAPUS ATAU KOMENTARI BARIS INI */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+    .btn-new-chat {
+      margin: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid var(--panel-border);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-new-chat:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: #6366f1;
+    }
+
+    .history-section {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      margin: 6px 16px 14px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(99, 102, 241, 0.12);
+      overflow: hidden;
+    }
+
+    .history-section-header {
+      flex-shrink: 0;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+    }
+
+    .history-section-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #b4b9c6;
+    }
+
+    .history-section-title i {
+      font-size: 0.7rem;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .history-section-count {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      background: rgba(99, 102, 241, 0.12);
+      padding: 1px 7px;
+      border-radius: 20px;
+      min-width: 16px;
+      text-align: center;
+    }
+
+    .chat-history {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .history-item {
+      position: relative;
+      padding: 6px 8px;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .history-item:hover {
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .history-item.active {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.22);
+    }
+
+    .history-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 7px;
+      bottom: 7px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--accent-gradient);
+    }
+
+    .history-item-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.58rem;
+      color: #c7d2fe;
+      background: rgba(99, 102, 241, 0.16);
+      border: 1px solid rgba(99, 102, 241, 0.22);
+    }
+
+    .history-item.active .history-item-icon {
+      background: var(--accent-gradient);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .history-item-title {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .history-item:hover .history-item-title,
+    .history-item.active .history-item-title {
+      color: #fff;
+    }
+
+    .history-item-action {
+      position: relative;
+      flex-shrink: 0;
+      width: 24px;
+      height: 18px;
+    }
+
+    .history-item-time,
+    .history-item-delete {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.15s ease;
+    }
+
+    .history-item-time {
+      font-size: 0.63rem;
+      color: rgba(156, 163, 175, 0.65);
+      justify-content: flex-end;
+      pointer-events: none;
+    }
+
+    .history-item-delete {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      opacity: 0;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .history-item:hover .history-item-time {
+      opacity: 0;
+    }
+
+    .history-item:hover .history-item-delete {
+      opacity: 1;
+    }
+
+    .history-item-delete:hover {
+      color: var(--danger);
+      background: rgba(239, 68, 68, 0.14);
+    }
+
+    .history-empty {
+      padding: 10px 8px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      text-align: center;
+      opacity: 0.5;
+    }
+
+    /* MAIN */
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      min-width: 0;
+    }
+
+    .sidebar,
+    .drawer,
+    #sidebar {
+      z-index: 9999 !important;
+      background-color: #0c0d14 !important;
+    }
+
+    /* TOP BAR WITH CIRCULAR BUTTON BACKGROUNDS */
+    .top-bar {
+      position: fixed;
+      top: 40px !important;
+      left: 0;
+      right: 0;
+      height: auto !important;
+      padding: 0 20px !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      border: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      z-index: 10 !important;
+      pointer-events: none;
+    }
+
+    .top-btn {
+  pointer-events: auto !important;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  /* Menggunakan warna background gelap dan border ungu agar menyatu dengan tema */
+  background: rgba(15, 19, 32, 0.8) !important;
+  border: 1px solid rgba(99, 102, 241, 0.25) !important;
+  color: #a5b4fc; /* Warna ikon dibuat sedikit keunguan */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.top-btn:hover {
+  background: rgba(99, 102, 241, 0.15) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+
+    .top-btn:active {
+      transform: scale(0.95);
+    }
+
+    .top-bar::before,
+    .top-bar::after {
+      display: none !important;
+    }
+
+    .messages-container {
+      padding-top: 95px !important;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .welcome-screen {
+      flex: 1;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .welcome-image {
+  width: 58px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin-bottom: 8px;
+  animation: floatLogo 1.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 18px rgba(168, 85, 247, 0.5));
+}
+/* Keyframes */
+@keyframes welcomeEntrance {
+  0% { opacity: 0; transform: scale(0.9) translateY(30px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes floatLogo {
+  0% { transform: translateY(0px) rotate(0deg); }
+  100% { transform: translateY(-12px) rotate(2deg); }
+}
+
+@keyframes blinkCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+
+    .welcome-greeting {
+      font-size: 1.55rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #ffffff, #a5b4fc, #c084fc, #67e8f9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .welcome-subtitle {
+      max-width: 430px;
+      padding: 0 20px;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      background: linear-gradient(90deg, #9ca3af, #c4b5fd, #67e8f9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* MESSAGES & ACTIONS */
+    .message {
+      max-width: 80%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user { align-self: flex-end; }
+    .message.ai {
+      align-self: flex-start;
+      max-width: 100%; /* jawaban AI pakai lebar penuh, gak nyisain area kosong di kanan kayak bubble user */
+    }
+
+    .message-content {
+      padding: 16px 20px;
+      border-radius: 16px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .message.user .message-content {
+      background: var(--user-msg-bg);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.ai .message-content {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 4px 0;
+      backdrop-filter: none;
+    }
+
+    .message-img {
+      max-width: 230px;
+      max-height: 260px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .message-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      color: #8b93a5;
+      font-size: 0.78rem;
+      flex-wrap: wrap;
+      opacity: 1;
+      transition: opacity 0.25s ease;
+    }
+
+    .message.is-typing .message-actions {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 7px;
+      height: 1em;
+      margin-left: 2px;
+      background: var(--accent-gradient);
+      vertical-align: text-bottom;
+      border-radius: 1px;
+      animation: typingBlink 0.55s ease-in-out infinite;
+    }
+
+    @keyframes typingBlink {
+      0%, 45% { opacity: 1; }
+      50%, 95% { opacity: 0.2; }
+      100% { opacity: 1; }
+    }
+
+    .message-content.glitching {
+      animation: glitchJitter 0.5s ease-in-out infinite;
+    }
+
+    @keyframes glitchJitter {
+      0%   { opacity: 1; text-shadow: none; }
+      50%  { opacity: 0.93; text-shadow: -1px 0 rgba(168, 85, 247, 0.4), 1px 0 rgba(6, 182, 212, 0.4); }
+      100% { opacity: 1; text-shadow: none; }
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 12px 0;
+      border-radius: 10px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .message-content table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .message-content th,
+    .message-content td {
+      padding: 9px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(99, 102, 241, 0.14);
+      white-space: normal;
+      word-break: normal;
+      overflow-wrap: break-word;
+      vertical-align: top;
+      min-width: 110px;
+    }
+
+    .message-content th {
+      background: rgba(99, 102, 241, 0.14);
+      color: #fff;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .message-content tr:last-child td {
+      border-bottom: none;
+    }
+
+    .message-content tbody tr:nth-child(even) td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .action-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: #9ca3af;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+      font-size: 0.78rem;
+    }
+
+    .action-link:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .action-link i {
+      font-size: 0.82rem;
+    }
+
+    .feedback-btn.active {
+      color: #a5b4fc;
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+
+    /* COMPOSER */
+    .composer-container {
+      padding: 16px 24px 24px;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .input-box {
+      background: var(--input-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.2s ease;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .input-box:focus-within {
+      border-color: #6366f1;
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+    }
+
+    .image-preview-wrapper {
+      display: none;
+      position: relative;
+      width: fit-content;
+      margin-bottom: -4px;
+    }
+
+    .image-preview-wrapper img {
+      width: 58px;
+      height: 58px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .btn-remove-img {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    textarea {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      resize: none;
+      outline: none;
+      min-height: 28px;
+      max-height: 150px;
+      padding: 0 4px;
+      width: 100%;
+    }
+
+    textarea::placeholder { color: #6b7280; }
+
+    .composer-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .btn-plus {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-plus:hover { background: rgba(255, 255, 255, 0.2); }
+
+    .model-selector-button {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-muted);
+      padding: 7px 12px;
+      border-radius: 16px;
+      outline: none;
+      font-size: 0.85rem;
+      cursor: pointer;
+      max-width: 190px;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s ease;
+    }
+
+    .model-selector-button:hover,
+    .model-selector-button.active {
+      color: #fff;
+      border-color: #6366f1;
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .model-selector-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .model-chevron {
+      width: 13px;
+      height: 13px;
+      flex: 0 0 auto;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-send {
+      background: #fff;
+      border: none;
+      color: #000;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s ease;
+    }
+
+    .btn-send svg {
+      stroke: #000;
+      width: 18px;
+      height: 18px;
+    }
+
+    .btn-send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-stop {
+      background: var(--danger);
+      border: none;
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* MODEL BOTTOM SHEET */
+    .model-sheet-overlay,
+    .sheet-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .model-sheet-overlay.active,
+    .sheet-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .model-bottom-sheet,
+    .bottom-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--panel-bg);
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      z-index: 1000;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 12px 24px 32px;
+      border-top: 1px solid var(--panel-border);
+      box-shadow: 0 -4px 18px rgba(0,0,0,0.28);
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+
+    .model-bottom-sheet.open,
+    .bottom-sheet.open {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      margin: 0 auto 16px;
+    }
+
+    .model-sheet-header,
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .model-sheet-header h4,
+    .sheet-header h4 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .model-sheet-close,
+    .sheet-header .icon-btn {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      z-index: 2;
+    }
+
+    .sheet-header-spacer {
+      width: 32px;
+      height: 32px;
+    }
+
+    .model-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .model-option {
+      width: 100%;
+      border: none;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.025);
+      color: var(--text-main);
+      text-align: left;
+      padding: 14px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background 0.2s ease;
+    }
+
+    .model-option:last-child { border-bottom: none; }
+
+    .model-option:hover,
+    .model-option.selected {
+      background: rgba(99, 102, 241, 0.09);
+    }
+
+    .model-option-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .model-option-title {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+      font-size: 1rem;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .model-option.selected .model-option-title {
+      color: #fff;
+    }
+
+    .model-option-description {
+      color: var(--text-muted);
+      margin-top: 5px;
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
+    .model-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.14);
+      color: #a5b4fc;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .model-check {
+      width: 22px;
+      height: 22px;
+      flex: 0 0 auto;
+      color: #60a5fa;
+      opacity: 0;
+    }
+
+    .model-option.selected .model-check { opacity: 1; }
+
+    .model-empty {
+      padding: 24px 16px;
+      text-align: center;
+      color: var(--text-muted);
+      border-radius: 18px;
+      border: 1px solid var(--panel-border);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .research-setting {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 17px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+    }
+
+    .research-info { flex: 1; }
+
+    .research-title {
+      color: #fff;
+      font-size: 0.98rem;
+      font-weight: 600;
+    }
+
+    .research-description {
+      margin-top: 5px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+
+    .research-switch {
+      position: relative;
+      width: 48px;
+      height: 27px;
+      flex: 0 0 auto;
+    }
+
+    .research-switch input { opacity: 0; width: 0; height: 0; }
+
+    .research-slider {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      border-radius: 30px;
+      background: rgba(255,255,255,0.18);
+      transition: .25s;
+    }
+
+    .research-slider::before {
+      content: "";
+      position: absolute;
+      width: 21px;
+      height: 21px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: #fff;
+      transition: .25s;
+    }
+
+    .research-switch input:checked + .research-slider {
+      background: #6366f1;
+    }
+
+    .research-switch input:checked + .research-slider::before {
+      transform: translateX(21px);
+    }
+
+    .model-sheet-footer { margin-top: 12px; }
+
+    .other-models-button {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-main);
+      border-radius: 16px;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .other-models-button:hover { background: rgba(255,255,255,0.06); }
+
+    /* PLUS BOTTOM SHEET */
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .sheet-item-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .sheet-item-card:hover { background: rgba(255, 255, 255, 0.1); }
+
+    .sheet-item-card svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--text-main);
+    }
+
+    .sheet-item-card span {
+      font-size: 0.85rem;
+      color: var(--text-main);
+    }
+
+    .sheet-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    .sheet-list-item:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.1);
+    }
+
+    .sheet-list-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .sheet-list-left > svg {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      stroke: var(--text-muted);
+    }
+
+    .sheet-list-title { font-size: 0.95rem; color: #fff; }
+    .sheet-list-subtitle { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: rgba(255,255,255,0.2);
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider { background: #6366f1; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    .message-content pre {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 8px 0;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .message-content code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.88rem;
+    }
+
+    .message-content .katex {
+      font-size: 1.05em;
+      color: inherit;
+    }
+
+    .message-content .katex-display {
+      margin: 12px 0;
+      padding: 14px 16px;
+      background: rgba(99, 102, 241, 0.07);
+      border: 1px solid rgba(99, 102, 241, 0.18);
+      border-radius: 10px;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .message-content .katex-error {
+      color: var(--danger);
+    }
+
+    .message-content p { margin-bottom: 8px; }
+    .message-content p:last-child { margin-bottom: 0; }
+    .message-content ul, .message-content ol { margin-left: 20px; margin-bottom: 8px; }
+    .message-content a { color: #60a5fa; }
+
+    .icon {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* AI THINKING */
+    .ai-thinking {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 0;
+      color: #9ca3af;
+      font-size: 0.88rem;
+    }
+
+    .thinking-icon {
+      width: 17px;
+      height: 17px;
+      border: 2px solid rgba(255,255,255,0.18);
+      border-top-color: #a5b4fc;
+      border-right-color: #67e8f9;
+      border-radius: 50%;
+      animation: thinkingSpin .8s linear infinite;
+    }
+
+    .thinking-dots {
+      display: flex;
+      gap: 3px;
+    }
+
+    .thinking-dots span {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #9ca3af;
+      animation: thinkingDot 1.2s infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: .15s; }
+    .thinking-dots span:nth-child(3) { animation-delay: .3s; }
+
+    @keyframes thinkingSpin { to { transform: rotate(360deg); } }
+    @keyframes thinkingDot {
+      0%, 60%, 100% { opacity: .25; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-3px); }
+    }
+
+    .brand-logo {
+      width: 27px;
+      height: 27px;
+      object-fit: cover;
+      border-radius: 7px;
+    }
+
+    /* MOBILE */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: absolute;
+        left: -280px;
+        height: 100%;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
+      }
+
+      .sidebar.open { left: 0; }
+      .message { max-width: 90%; }
+      .messages-container { padding: 16px; }
+      .composer-container { padding: 12px 16px 16px; }
+
+      .model-bottom-sheet,
+      .bottom-sheet {
+        padding-left: 16px;
+        padding-right: 16px;
+        border-top-left-radius: 28px;
+        border-top-right-radius: 28px;
+      }
+
+      .sheet-grid { gap: 10px; }
+      .model-selector-button { max-width: 155px; }
+      .toolbar-right { gap: 5px; }
+    }
+
+    @media (max-width: 430px) {
+      .top-bar { padding: 0 14px !important; }
+      .composer-container { padding-left: 10px; padding-right: 10px; }
+      .input-box { padding: 13px 12px; }
+
+      .model-selector-button {
+        max-width: 145px;
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .toolbar-left { gap: 7px; }
+      .toolbar-right { gap: 2px; }
+    }
+    .sidebar-footer {
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--panel-border);
+  background: transparent;
+  letter-spacing: 0.5px;
+  margin-top: auto; /* Memastikan posisinya selalu terdorong ke paling bawah */
+}
+.modder-name {
+  font-weight: 700;
+  /* Kombinasi warna gradasi yang terang dan elegan */
+  background: linear-gradient(90deg, #a5b4fc, #c084fc, #67e8f9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+  </style>
+</head>
+
+<body>
+
+  <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="50%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </svg>
+
+  <div class="app-container">
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <img src="logo.png" class="brand-logo" alt="Logo">
+          Pretvfx-AI
+        </div>
+
+        <button class="icon-btn" onclick="toggleSidebar()" title="Close Menu">
+          <svg class="icon" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <button class="btn-new-chat" onclick="startNewChat()">
+        <svg class="icon" viewBox="0 0 24 24">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        New Chat
+      </button>
+
+      <div class="history-section">
+        <div class="history-section-header">
+          <span class="history-section-title">
+            <i class="fa-regular fa-clock"></i>
+            History Chat
+          </span>
+          <span class="history-section-count" id="historyCount"></span>
+        </div>
+        <div class="chat-history" id="chatHistory"></div>
+      </div>
+
+  <!-- Tambahkan kode footer di sini -->
+    <!-- Teks Modded By dengan Gradasi -->
+  <div class="sidebar-footer">
+    Modded by <span class="modder-name">Zain Suryo Negoro</span>
+  </div>
+</aside>
+
+
+    <main class="chat-main">
+
+      <!-- TOP BAR WITH CIRCULAR BUTTONS -->
+      <div class="top-bar">
+        <!-- Tombol Menu Kiri -->
+        <button class="top-btn" onclick="toggleSidebar()" title="Menu">
+          <svg class="icon" viewBox="0 0 24 24">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <!-- Tombol New Chat Kanan -->
+        <button class="top-btn" onclick="startNewChat()" title="Chat Baru">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="messages-container" id="messagesContainer"></div>
+
+      <div class="composer-container">
+        <div class="input-box">
+
+          <div class="image-preview-wrapper" id="imagePreviewWrapper">
+            <img id="imagePreview" src="" alt="Preview">
+            <button class="btn-remove-img" onclick="clearImage()">✕</button>
+          </div>
+
+          <textarea
+            id="promptInput"
+            placeholder="Mengobrol dengan Pretv X One..."
+            onkeydown="handleKeyDown(event)"
+            oninput="autoResizeTextarea(this)"
+          ></textarea>
+
+          <div class="composer-toolbar">
+
+            <div class="toolbar-left">
+              <button class="btn-plus" onclick="toggleBottomSheet()" title="Tambahkan">
+                +
+              </button>
+
+              <button
+                class="model-selector-button"
+                id="modelSelectorButton"
+                onclick="toggleModelSheet()"
+                title="Pilih model"
+              >
+                <span class="model-selector-name" id="modelSelectorName">Loading Models...</span>
+                <svg class="model-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            </div>
+
+            <div class="toolbar-right">
+
+              <input
+                type="file"
+                id="imageInput"
+                accept="image/*"
+                style="display:none;"
+                onchange="handleImageSelect(event)"
+              >
+
+              <button class="icon-btn" title="Voice Input">
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </button>
+
+              <button class="btn-stop" id="btnStop" onclick="stopGenerating()" title="Stop">
+                <svg class="icon" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12"></rect>
+                </svg>
+              </button>
+
+              <button class="btn-send" id="btnSend" onclick="sendMessage()" title="Kirim">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"></line>
+                  <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+              </button>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODEL SHEET -->
+  <div class="model-sheet-overlay" id="modelSheetOverlay" onclick="toggleModelSheet()"></div>
+
+  <div class="model-bottom-sheet" id="modelBottomSheet">
+
+    <div class="sheet-handle"></div>
+
+    <div class="model-sheet-header">
+      <button class="icon-btn model-sheet-close" onclick="toggleModelSheet()" title="Tutup">
+        <svg class="icon" viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <h4>Pilih model</h4>
+
+      <div class="sheet-header-spacer"></div>
+    </div>
+
+    <div class="model-list" id="modelList">
+      <div class="model-empty">Memuat model dari Admin Control...</div>
+    </div>
+
+    <div class="research-setting">
+      <div class="research-info">
+        <div class="research-title">Riset mendalam</div>
+        <div class="research-description">AI akan berpikir lebih teliti dan memberikan jawaban lebih lengkap.</div>
+      </div>
+
+      <label class="research-switch">
+        <input type="checkbox" id="deepResearchToggle" onchange="toggleDeepResearch(this.checked)">
+        <span class="research-slider"></span>
+      </label>
+    </div>
+
+    <div class="model-sheet-footer">
+      <button class="other-models-button" onclick="showOtherModelsInfo()">
+        <span>••• &nbsp; Model lainnya</span>
+        <svg class="icon" viewBox="0 0 24 24">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- PLUS SHEET -->
+  <div class="sheet-overlay" id="sheetOverlay" onclick="toggleBottomSheet()"></div>
+
+  <div class="bottom-sheet" id="bottomSheet">
+
+    <div class="sheet-handle"></div>
+
+    <div class="sheet-header">
+      <button class="icon-btn" onclick="toggleBottomSheet()" title="Tutup">
+        <svg class="icon" viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <h4>Tambahkan ke chat</h4>
+
+      <div class="sheet-header-spacer"></div>
+    </div>
+
+    <div class="sheet-grid">
+
+      <div class="sheet-item-card" onclick="openCameraInfo()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <span>Kamera</span>
+      </div>
+
+      <div class="sheet-item-card" onclick="document.getElementById('imageInput').click(); toggleBottomSheet();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <span>Foto</span>
+      </div>
+
+      <div class="sheet-item-card" onclick="openFilePicker()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+          <polyline points="13 2 13 9 20 9"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+        <span>File</span>
+      </div>
+
+    </div>
+
+    <div class="sheet-list">
+
+      <div class="sheet-list-item" onclick="toggleWebSearch()">
+        <div class="sheet-list-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+
+          <span class="sheet-list-title">Pencarian web</span>
+        </div>
+
+        <label class="switch" onclick="event.stopPropagation()">
+          <input type="checkbox" id="webSearchToggle" checked onchange="webSearchEnabled = this.checked;">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="sheet-list-item" onclick="showProjectInfo()">
+        <div class="sheet-list-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+
+          <div>
+            <div class="sheet-list-title">Tambahkan ke proyek</div>
+            <div class="sheet-list-subtitle">Tidak ada</div>
+          </div>
+        </div>
+
+        <svg class="icon" viewBox="0 0 24 24">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </div>
+
+      <div class="sheet-list-item" onclick="showToolsInfo()">
+        <div class="sheet-list-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+            <rect x="9" y="9" width="6" height="6"></rect>
+            <line x1="9" y1="1" x2="9" y2="4"></line>
+            <line x1="15" y1="1" x2="15" y2="4"></line>
+            <line x1="9" y1="20" x2="9" y2="23"></line>
+            <line x1="15" y1="20" x2="15" y2="23"></line>
+            <line x1="20" y1="9" x2="23" y2="9"></line>
+            <line x1="20" y1="14" x2="23" y2="14"></line>
+            <line x1="1" y1="9" x2="4" y2="9"></line>
+            <line x1="1" y1="14" x2="4" y2="14"></line>
+          </svg>
+
+          <div>
+            <div class="sheet-list-title">Akses alat</div>
+            <div class="sheet-list-subtitle">Auto</div>
+          </div>
+        </div>
+
+        <svg class="icon" viewBox="0 0 24 24">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://avomctrjaroyourindwh.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_C5VqC9QjJoRpyQgQEUPZeg_vgBVlOEw";
+
+    const supabaseClient = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    );
+
+    let activeModels = [];
+    let currentSelectedModel = null;
+    let currentChatMessages = [];
+    let base64ImageData = null;
+    let abortController = null;
+
+    let responseMode = 'short';
+    let webSearchEnabled = true;
+
+    // ===== RIWAYAT CHAT (disimpan di penyimpanan HP / localStorage) =====
+    const CHAT_STORAGE_KEY = 'pretvfx_chat_sessions';
+    let chatSessions = [];
+    let currentChatId = null;
+
+    function loadChatSessions() {
+      try {
+        const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        chatSessions = Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        chatSessions = [];
+      }
+    }
+
+    function saveChatSessions() {
+      for (let attempt = 0; attempt < 15; attempt++) {
+        try {
+          localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatSessions));
+          return;
+        } catch (error) {
+          const isQuotaError = error && (error.name === 'QuotaExceededError' || error.code === 22);
+          if (!isQuotaError) {
+            console.error('Gagal menyimpan riwayat chat:', error);
+            return;
+          }
+          // Penyimpanan HP penuh: buang gambar dari chat terlama satu per satu (teksnya tetap disimpan), lalu coba lagi
+          if (!dropOldestStoredImage()) {
+            alert('Penyimpanan HP sudah penuh. Hapus beberapa riwayat chat lama agar chat baru bisa tersimpan.');
+            return;
+          }
+        }
+      }
+    }
+
+    function dropOldestStoredImage() {
+      const sorted = [...chatSessions].sort((a, b) => a.updatedAt - b.updatedAt);
+      for (const session of sorted) {
+        const target = session.messages.find(m => m.image);
+        if (target) {
+          target.image = null;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function createNewChatId() {
+      return 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    }
+
+    function generateChatTitle(messages) {
+      const firstUserMsg = messages.find(msg => msg.role === 'user' && msg.text);
+      if (!firstUserMsg) return 'Percakapan Baru';
+      const text = firstUserMsg.text.trim();
+      return text.length > 40 ? text.slice(0, 40) + '...' : text;
+    }
+
+    function persistCurrentChat() {
+      if (!currentChatId || currentChatMessages.length === 0) return;
+      let session = chatSessions.find(s => s.id === currentChatId);
+      if (session) {
+        session.messages = currentChatMessages;
+        session.title = generateChatTitle(currentChatMessages);
+        session.updatedAt = Date.now();
+      } else {
+        session = {
+          id: currentChatId,
+          title: generateChatTitle(currentChatMessages),
+          messages: currentChatMessages,
+          updatedAt: Date.now()
+        };
+        chatSessions.unshift(session);
+      }
+      saveChatSessions();
+      renderChatHistoryList();
+    }
+
+    function formatRelativeTime(timestamp) {
+      const diffMin = Math.floor((Date.now() - timestamp) / 60000);
+      if (diffMin < 1) return 'Baru';
+      if (diffMin < 60) return diffMin + 'm';
+      const diffHour = Math.floor(diffMin / 60);
+      if (diffHour < 24) return diffHour + 'j';
+      const diffDay = Math.floor(diffHour / 24);
+      if (diffDay === 1) return 'Kemarin';
+      if (diffDay < 7) return diffDay + 'h';
+      const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+      const date = new Date(timestamp);
+      return date.getDate() + ' ' + bulan[date.getMonth()];
+    }
+
+    function renderChatHistoryList() {
+      const listEl = document.getElementById('chatHistory');
+      const countEl = document.getElementById('historyCount');
+      if (!listEl) return;
+
+      if (countEl) countEl.textContent = chatSessions.length > 0 ? chatSessions.length : '';
+
+      if (chatSessions.length === 0) {
+        listEl.innerHTML = '<div class="history-empty">Belum ada riwayat chat</div>';
+        return;
+      }
+
+      const sorted = [...chatSessions].sort((a, b) => b.updatedAt - a.updatedAt);
+      listEl.innerHTML = sorted.map(session => `
+        <div class="history-item ${session.id === currentChatId ? 'active' : ''}" onclick="loadChatSession('${session.id}')">
+          <span class="history-item-icon"><i class="fa-solid fa-message"></i></span>
+          <span class="history-item-title">${escapeHtml(session.title)}</span>
+          <span class="history-item-action">
+            <span class="history-item-time">${formatRelativeTime(session.updatedAt)}</span>
+            <button class="history-item-delete" onclick="deleteChatSession(event, '${session.id}')" title="Hapus chat ini">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function loadChatSession(id) {
+      const session = chatSessions.find(s => s.id === id);
+      if (!session) return;
+
+      currentChatId = id;
+      currentChatMessages = session.messages.map(msg => ({ ...msg }));
+
+      const container = document.getElementById('messagesContainer');
+      container.innerHTML = '';
+      currentChatMessages.forEach(msg => {
+        appendMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.text, msg.image || null);
+      });
+
+      clearImage();
+      renderChatHistoryList();
+
+      if (window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('open')) {
+        toggleSidebar();
+      }
+    }
+
+    function deleteChatSession(event, id) {
+      event.stopPropagation();
+      if (!confirm('Hapus riwayat chat ini?')) return;
+
+      chatSessions = chatSessions.filter(s => s.id !== id);
+      saveChatSessions();
+
+      if (id === currentChatId) {
+        startNewChat();
+      } else {
+        renderChatHistoryList();
+      }
+    }
+    // ===== AKHIR RIWAYAT CHAT =====
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      loadChatSessions();
+      currentChatId = createNewChatId();
+      renderChatHistoryList();
+      await fetchActiveModels();
+      renderWelcomeMessage();
+    });
+
+    async function fetchActiveModels() {
+      const nameElement = document.getElementById('modelSelectorName');
+      const listElement = document.getElementById('modelList');
+
+      nameElement.textContent = 'Loading Models...';
+      listElement.innerHTML = '<div class="model-empty">Memuat model dari Admin Control...</div>';
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('ai_models')
+          .select('*')
+          .eq('enabled', true)
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          activeModels = [];
+          currentSelectedModel = null;
+          nameElement.textContent = 'Gagal memuat model';
+          listElement.innerHTML = '<div class="model-empty">Gagal memuat model.<br><small>' + escapeHtml(error.message) + '</small></div>';
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          activeModels = [];
+          currentSelectedModel = null;
+          nameElement.textContent = 'Tidak ada model';
+          listElement.innerHTML = '<div class="model-empty">Belum ada model AI aktif di Admin Control.</div>';
+          return;
+        }
+
+        activeModels = data;
+        const previousId = currentSelectedModel?.id;
+        currentSelectedModel = activeModels.find(model => String(model.id) === String(previousId)) || activeModels[0];
+
+        renderModelSelector();
+        renderModelList();
+      } catch (error) {
+        activeModels = [];
+        currentSelectedModel = null;
+        nameElement.textContent = 'Error Supabase';
+        listElement.innerHTML = '<div class="model-empty">Error koneksi Supabase.<br><small>' + escapeHtml(error.message) + '</small></div>';
+      }
+    }
+
+    function getModelName(model) {
+      return String(model?.name || model?.display_name || model?.model_name || model?.model_id || 'Model AI');
+    }
+
+    function getModelDescription(model) {
+      return String(model?.description || model?.desc || model?.subtitle || 'Model AI dari Admin Control');
+    }
+
+    function getModelBadge(model) {
+      return String(model?.badge || model?.plan || model?.tier || '').trim();
+    }
+
+    function renderModelSelector() {
+      const nameElement = document.getElementById('modelSelectorName');
+      if (!currentSelectedModel) {
+        nameElement.textContent = 'Pilih model';
+        return;
+      }
+      nameElement.textContent = getModelName(currentSelectedModel);
+    }
+
+    function renderModelList() {
+      const listElement = document.getElementById('modelList');
+      if (!activeModels.length) {
+        listElement.innerHTML = '<div class="model-empty">Tidak ada model aktif.</div>';
+        return;
+      }
+
+      listElement.innerHTML = '';
+      activeModels.forEach(model => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'model-option' + (currentSelectedModel && String(currentSelectedModel.id) === String(model.id) ? ' selected' : '');
+        const badge = getModelBadge(model);
+
+        button.innerHTML = `
+          <div class="model-option-main">
+            <div class="model-option-title">
+              <span>${escapeHtml(getModelName(model))}</span>
+              ${badge ? `<span class="model-badge">${escapeHtml(badge)}</span>` : ''}
+            </div>
+            <div class="model-option-description">${escapeHtml(getModelDescription(model))}</div>
+          </div>
+          <svg class="model-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="5 12 10 17 20 7"></polyline>
+          </svg>
+        `;
+
+        button.addEventListener('click', () => selectModel(model));
+        listElement.appendChild(button);
+      });
+    }
+
+    function selectModel(model) {
+      if (!model) return;
+      currentSelectedModel = model;
+      renderModelSelector();
+      renderModelList();
+      toggleModelSheet();
+    }
+
+    function toggleModelSheet() {
+      const sheet = document.getElementById('modelBottomSheet');
+      const overlay = document.getElementById('modelSheetOverlay');
+      const button = document.getElementById('modelSelectorButton');
+
+      if (sheet.classList.contains('open')) {
+        sheet.classList.remove('open');
+        overlay.classList.remove('active');
+        button.classList.remove('active');
+      } else {
+        renderModelList();
+        sheet.classList.add('open');
+        overlay.classList.add('active');
+        button.classList.add('active');
+      }
+    }
+
+    function getResponseModeInstruction() {
+      if (deepResearchEnabled) {
+        return 'Mode Riset Mendalam aktif. Berikan jawaban yang lebih teliti, lengkap, terstruktur, dan mendalam.';
+      }
+      return 'Mode Riset Mendalam tidak aktif. Jawab secara singkat, jelas, langsung ke inti, dan jangan terlalu panjang.';
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
+
+    function toggleBottomSheet() {
+      const sheet = document.getElementById('bottomSheet');
+      const overlay = document.getElementById('sheetOverlay');
+      if (sheet.classList.contains('open')) {
+        sheet.classList.remove('open');
+        overlay.classList.remove('active');
+      } else {
+        sheet.classList.add('open');
+        overlay.classList.add('active');
+      }
+    }
+
+    let typingTimeout = null;
+
+function renderWelcomeMessage() {
+  const container = document.getElementById('messagesContainer');
+  container.innerHTML = `
+    <div class="welcome-screen">
+      <img src="logo.png" class="welcome-image" alt="Pretvfx">
+      <div class="welcome-greeting">
+        <span id="typingWelcome"></span><span class="typing-cursor"></span>
+      </div>
+      <div class="welcome-subtitle">Teman AI untuk ngobrol, mencari ide, belajar, dan membantu pekerjaanmu.</div>
+    </div>
+  `;
+  startLoopTyping();
+}
+
+function startLoopTyping() {
+  const element = document.getElementById('typingWelcome');
+  if (!element) return;
+
+  // Daftar kalimat yang akan bergantian diketik
+  const phrases = [
+    'Selamat datang di Pretvfx-AI',
+    'Pretvfx-AI siap membantu!!!',
+    'Gratis untuk semua model!!!',
+    'Mau tanya tentang apa?',
+    'Mau cari ide apa?',
+    'Butuh bantuan sekarang?',
+    'Ada yang dicari?',
+    'Punya pertanyaan apa?',
+    'Yuk mulai ngobrol',
+    'Ayo mulai sekarang',
+    'Ketik pesanmu disini',
+    'Tulis pertanyaanmu sekarang',
+    'Coba tanyakan sesuatu',
+    'Cari solusi bersama',
+    'Mari pecahkan masalah',
+    'Siap membantu kamu',
+    'Aku siap membantu',
+    'Tanyakan apa saja',
+    'Jangan ragu bertanya',
+    'Butuh ide baru?',
+    'Mau belajar sesuatu?',
+    'Siap untuk mulai?',
+    'Ayo ngobrol santai',
+    'Mari mulai percakapan',
+    'Punya ide menarik?',
+    'Butuh jawaban cepat?',
+    'Cari informasi terbaru?',
+    'Mau tahu sesuatu?',
+    'Ada masalah teknis?',
+    'Butuh bantuan teknis?',
+    'Bingung dengan sesuatu?',
+    'Mari cari jawaban',
+    'Kita mulai sekarang',
+    'Yuk cari solusi',
+    'Coba tanya Pretvfx',
+    'Pretvfx siap menjawab',
+    'AI siap membantu',
+    'AI menunggu pesanmu',
+    'Ketik pesan sekarang',
+    'Kirim pesanmu sekarang',
+    'Mulai chat sekarang',
+    'Let’s start chatting',
+    'Ready to ask?',
+    'What do you?',
+    'Need some help?',
+    'Ask me anything',
+    'Let’s talk now',
+    'Start chatting now',
+    'Tell me something',
+    'What’s on your?',
+    'Are you ready?'
+];
+
+  let phraseIndex = 0;
+  let charIndex = 0;
+  let isDeleting = false;
+
+  if (typingTimeout) clearTimeout(typingTimeout);
+
+  function typeLoop() {
+    const currentPhrase = phrases[phraseIndex];
+
+    if (isDeleting) {
+      element.textContent = currentPhrase.substring(0, charIndex - 1);
+      charIndex--;
+    } else {
+      element.textContent = currentPhrase.substring(0, charIndex + 1);
+      charIndex++;
+    }
+
+    let typeSpeed = isDeleting ? 35 : 70;
+
+    // Tahan 2 detik jika kalimat selesai diketik
+    if (!isDeleting && charIndex === currentPhrase.length) {
+      typeSpeed = 2000;
+      isDeleting = true;
+    } 
+    // Pindah ke kalimat berikutnya jika selesai dihapus
+    else if (isDeleting && charIndex === 0) {
+      isDeleting = false;
+      phraseIndex = (phraseIndex + 1) % phrases.length;
+      typeSpeed = 400;
+    }
+
+    typingTimeout = setTimeout(typeLoop, typeSpeed);
+  }
+
+  typeLoop();
+}
+
+
+    function typeWelcomeText() {
+      const element = document.getElementById('typingWelcome');
+      if (!element) return;
+      const text = 'Selamat datang di Pretvfx-AI';
+      let index = 0;
+      element.textContent = '';
+      const typing = setInterval(() => {
+        element.textContent += text[index];
+        index++;
+        if (index >= text.length) clearInterval(typing);
+      }, 70);
+    }
+
+    function startNewChat() {
+      currentChatId = createNewChatId();
+      currentChatMessages = [];
+      renderWelcomeMessage();
+      clearImage();
+      const input = document.getElementById('promptInput');
+      input.value = '';
+      input.style.height = '';
+      renderChatHistoryList();
+      if (window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('open')) {
+        toggleSidebar();
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    function autoResizeTextarea(element) {
+      element.style.height = '';
+      element.style.height = Math.min(element.scrollHeight, 150) + 'px';
+    }
+
+    function compressImageFile(file, maxDimension = 1280, quality = 0.72) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = Math.round(height * (maxDimension / width));
+                width = maxDimension;
+              } else {
+                width = Math.round(width * (maxDimension / height));
+                height = maxDimension;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = () => reject(new Error('Gagal memuat gambar'));
+          img.src = e.target.result;
+        };
+        reader.onerror = () => reject(new Error('Gagal membaca file gambar'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleImageSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        alert('File yang dipilih bukan gambar.');
+        return;
+      }
+      try {
+        // Foto dikecilkan & dikompres dulu supaya ringan dikirim ke AI dan tidak cepat memenuhi penyimpanan HP
+        base64ImageData = await compressImageFile(file);
+        document.getElementById('imagePreview').src = base64ImageData;
+        document.getElementById('imagePreviewWrapper').style.display = 'block';
+      } catch (error) {
+        alert('Gagal memproses gambar, coba foto lain.');
+      }
+    }
+
+    function clearImage() {
+      base64ImageData = null;
+      document.getElementById('imagePreview').src = '';
+      document.getElementById('imagePreviewWrapper').style.display = 'none';
+      document.getElementById('imageInput').value = '';
+    }
+
+    function openFilePicker() {
+      document.getElementById('imageInput').click();
+      toggleBottomSheet();
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('promptInput');
+      const text = input.value.trim();
+      const container = document.getElementById('messagesContainer');
+
+      if (!text && !base64ImageData) return;
+      if (!currentSelectedModel) {
+        alert('Model belum tersedia.');
+        return;
+      }
+
+      if (container.querySelector('.welcome-screen')) container.innerHTML = '';
+
+      appendMessage('user', text, base64ImageData);
+      currentChatMessages.push({ role: 'user', text: text, image: base64ImageData });
+      persistCurrentChat();
+
+      input.value = '';
+      input.style.height = '';
+      const sentImage = base64ImageData;
+      clearImage();
+
+      setLoadingState(true);
+      abortController = new AbortController();
+      showThinking();
+
+      try {
+        let aiResponseText = '';
+        if (String(currentSelectedModel.provider).toLowerCase() === 'gemini') {
+          aiResponseText = await callGemini(currentSelectedModel, text, sentImage, abortController.signal);
+        } else {
+          aiResponseText = await callOpenAICompatible(currentSelectedModel, currentChatMessages, abortController.signal);
+        }
+
+        removeThinking();
+        const shownText = await appendMessage('ai', aiResponseText, null, true);
+        currentChatMessages.push({ role: 'assistant', text: shownText });
+        persistCurrentChat();
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          appendMessage('ai', '❌ Error: ' + error.message);
+        }
+      } finally {
+        removeThinking();
+        setLoadingState(false);
+        abortController = null;
+      }
+    }
+
+    async function callGemini(modelConfig, prompt, imageBase64, signal) {
+      const endpoint = modelConfig.endpoint.replace(/\/+$/, '');
+      const modelId = modelConfig.model_id.replace(/^models\//, '').replace(/\/+$/, '');
+      const url = `${endpoint}/${modelId}:generateContent?key=` + encodeURIComponent(modelConfig.api_key);
+
+      const parts = [];
+      if (prompt) parts.push({ text: `${getResponseModeInstruction()}\n\nPertanyaan pengguna:\n${prompt}` });
+      if (imageBase64) {
+        const mimeMatch = imageBase64.match(/^data:([^;]+);base64,/);
+        if (mimeMatch) {
+          parts.push({
+            inline_data: { mime_type: mimeMatch[1], data: imageBase64.split(',')[1] }
+          });
+        }
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: signal,
+        body: JSON.stringify({ contents: [{ role: 'user', parts: parts }] })
+      });
+
+      const json = await response.json();
+      if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
+      return json.candidates[0].content.parts.filter(p => typeof p.text === 'string').map(p => p.text).join('');
+    }
+
+    async function callOpenAICompatible(modelConfig, history, signal) {
+      const messages = history.map(msg => {
+        const role = msg.role === 'assistant' ? 'assistant' : 'user';
+        const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
+
+        if (msg.image) {
+          const content = [];
+          if (textContent) content.push({ type: 'text', text: textContent });
+          content.push({ type: 'image_url', image_url: { url: msg.image } });
+          return { role, content };
+        }
+
+        return { role, content: textContent };
+      });
+
+      const response = await fetch(modelConfig.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${modelConfig.api_key}`
+        },
+        signal: signal,
+        body: JSON.stringify({ model: modelConfig.model_id, messages: messages })
+      });
+
+      const json = await response.json();
+      if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
+      return json?.choices?.[0]?.message?.content || '';
+    }
+
+    let activeTypingStop = null;
+
+    function appendMessage(sender, text, image = null, animate = false) {
+      const container = document.getElementById('messagesContainer');
+      const msgDiv = document.createElement('div');
+
+      const shouldAnimate = animate && sender === 'ai' && !!text;
+      msgDiv.className = `message ${sender}${shouldAnimate ? ' is-typing' : ''}`;
+      let imgHtml = image ? `<img src="${escapeHtml(image)}" class="message-img" alt="Uploaded Image">` : '';
+      let parsedText = shouldAnimate
+        ? ''
+        : renderMessageHtml(text);
+
+      msgDiv.innerHTML = `
+        ${imgHtml}
+        <div class="message-content">${parsedText}</div>
+
+        <div class="message-actions">
+          <button class="action-link" onclick="copyToClipboard(this)" title="Salin teks">
+            <i class="fa-regular fa-copy"></i>
+            <span>Salin</span>
+          </button>
+
+          ${
+            sender === 'ai'
+              ? `
+                <button class="action-link" onclick="speakMessage(this)" title="Bacakan suara">
+                  <i class="fa-solid fa-volume-high"></i>
+                  <span>Suara</span>
+                </button>
+
+                <button class="action-link feedback-btn" onclick="giveFeedback(this, 'like')" title="Suka">
+                  <i class="fa-regular fa-thumbs-up"></i>
+                </button>
+
+                <button class="action-link feedback-btn" onclick="giveFeedback(this, 'dislike')" title="Tidak Suka">
+                  <i class="fa-regular fa-thumbs-down"></i>
+                </button>
+              `
+              : ''
+          }
+        </div>
+      `;
+
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+
+      if (shouldAnimate) {
+        return typeWriterEffect(msgDiv, text);
+      }
+      return Promise.resolve(text);
+    }
+
+    function typeWriterEffect(msgDiv, fullText) {
+      return new Promise(resolve => {
+        const contentEl = msgDiv.querySelector('.message-content');
+        const container = document.getElementById('messagesContainer');
+        // Reveal per kata (bukan per karakter) biar gak ada kata kepotong di tengah pas lagi animasi
+        const chunks = fullText.match(/\S+\s*/g) || [fullText];
+        const TOTAL_STEPS = Math.min(chunks.length, 26); // dibatasi biar teks panjang tetap gak kelamaan
+        const chunksPerTick = Math.max(1, Math.ceil(chunks.length / TOTAL_STEPS));
+        const TICK_DELAY = 42; // ms - lebih santai dari versi sebelumnya, tapi tetap gak selambat awal
+        let chunkIndex = 0;
+        let done = false;
+
+        contentEl.classList.add('glitching');
+
+        function shownTextUpTo(count) {
+          return chunks.slice(0, count).join('');
+        }
+
+        function finalize(count) {
+          if (done) return;
+          done = true;
+          if (activeTypingStop === stopHandler) activeTypingStop = null;
+          const shownText = shownTextUpTo(count);
+          msgDiv.classList.remove('is-typing');
+          contentEl.classList.remove('glitching');
+          contentEl.innerHTML = renderMessageHtml(shownText);
+          container.scrollTop = container.scrollHeight;
+          resolve(shownText);
+        }
+
+        function stopHandler() {
+          // Dipotong di posisi sekarang, sisa kata setelahnya dibuang (tidak diselesaikan)
+          finalize(chunkIndex);
+        }
+
+        activeTypingStop = stopHandler;
+
+        function tick() {
+          if (done) return;
+          chunkIndex += chunksPerTick;
+          if (chunkIndex >= chunks.length) {
+            finalize(chunks.length);
+            return;
+          }
+          contentEl.innerHTML = renderMessageHtml(shownTextUpTo(chunkIndex)) + '<span class="typing-cursor"></span>';
+          container.scrollTop = container.scrollHeight;
+          setTimeout(tick, TICK_DELAY);
+        }
+
+        tick();
+      });
+    }
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderMathToken(rawFormula, displayMode) {
+      if (typeof katex === 'undefined') return null;
+      try {
+        return katex.renderToString(rawFormula.trim(), { throwOnError: false, displayMode });
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function renderMessageHtml(text) {
+      if (!text) return '';
+
+      // 1) Cari & render rumus LaTeX DULUAN (sebelum masuk markdown), soalnya markdown suka
+      //    ngilangin backslash di depan ( ) [ ] { } sehingga rumusnya rusak/kepotong.
+      const mathTokens = [];
+      function extractMath(source, pattern, displayMode) {
+        return source.replace(pattern, (match, formula) => {
+          const rendered = renderMathToken(formula, displayMode);
+          if (rendered === null) return match; // gagal render, biarkan apa adanya
+          const token = `@@KMATH${mathTokens.length}@@`;
+          mathTokens.push(rendered);
+          return token;
+        });
+      }
+
+      let working = text;
+      working = extractMath(working, /\\\[([\s\S]+?)\\\]/g, true);   // \[ ... \]  (blok)
+      working = extractMath(working, /\$\$([\s\S]+?)\$\$/g, true);   // $$ ... $$  (blok)
+      working = extractMath(working, /\\\(([\s\S]+?)\\\)/g, false);  // \( ... \)  (inline)
+
+      // 2) baru render markdown seperti biasa
+      let html = (typeof marked === 'undefined') ? escapeHtml(working) : marked.parse(working);
+
+      // Bungkus tabel dengan div yang bisa di-scroll horizontal biar kolomnya gak kegencet/kepotong di layar sempit
+      html = html.replace(/<table>/g, '<div class="table-scroll"><table>').replace(/<\/table>/g, '</table></div>');
+
+      // 3) kembalikan rumus yang sudah dirender KaTeX ke posisi aslinya
+      mathTokens.forEach((renderedHtml, i) => {
+        html = html.split(`@@KMATH${i}@@`).join(renderedHtml);
+      });
+
+      return html;
+    }
+
+    async function copyToClipboard(button) {
+      const content = button.closest('.message').querySelector('.message-content').innerText;
+      try {
+        await navigator.clipboard.writeText(content);
+        const original = button.innerHTML;
+        button.innerHTML = '<i class="fa-solid fa-check"></i><span>Tersalin!</span>';
+        setTimeout(() => { button.innerHTML = original; }, 2000);
+      } catch (error) {
+        alert('Gagal menyalin teks.');
+      }
+    }
+
+    function stopGenerating() {
+      if (abortController) abortController.abort();
+      if (activeTypingStop) activeTypingStop();
+      setLoadingState(false);
+    }
+
+    function setLoadingState(isLoading) {
+      document.getElementById('btnSend').style.display = isLoading ? 'none' : 'flex';
+      document.getElementById('btnStop').style.display = isLoading ? 'flex' : 'none';
+    }
+
+    function openCameraInfo() {
+      toggleBottomSheet();
+      alert('Kamera menggunakan fitur kamera perangkat.');
+    }
+
+    function showProjectInfo() { alert('Fitur proyek belum dikonfigurasi.'); }
+    function showToolsInfo() { alert('Akses alat masih mengikuti konfigurasi Admin Control.'); }
+    function showOtherModelsInfo() { alert('Model lainnya akan mengikuti model aktif yang ditambahkan melalui Admin Control.'); }
+
+    function toggleWebSearch() {
+      const checkbox = document.getElementById('webSearchToggle');
+      checkbox.checked = !checkbox.checked;
+      webSearchEnabled = checkbox.checked;
+    }
+
+    function showThinking() {
+      const container = document.getElementById('messagesContainer');
+      const thinking = document.createElement('div');
+      thinking.className = 'message ai';
+      thinking.id = 'thinkingMessage';
+      thinking.innerHTML = `
+        <div class="ai-thinking">
+          <div class="thinking-icon"></div>
+          <span>AI sedang berpikir</span>
+          <div class="thinking-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      `;
+      container.appendChild(thinking);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function removeThinking() {
+      const thinking = document.getElementById('thinkingMessage');
+      if (thinking) thinking.remove();
+    }
+
+    function speakMessage(button) {
+      const content = button.closest('.message').querySelector('.message-content').innerText;
+      if (!content) return;
+
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        const speech = new SpeechSynthesisUtterance(content);
+        speech.lang = 'id-ID';
+        speech.rate = 1;
+        speechSynthesis.speak(speech);
+
+        button.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>Berbicara...</span>';
+        speech.onend = () => {
+          button.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>Suara</span>';
+        };
+      } else {
+        alert('Fitur suara tidak didukung perangkat ini.');
+      }
+    }
+
+    function giveFeedback(button, type) {
+      const parent = button.parentElement;
+      parent.querySelectorAll('.feedback-btn').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+    }
+
+    let deepResearchEnabled = false;
+    function toggleDeepResearch(enabled) {
+      deepResearchEnabled = enabled;
+      responseMode = enabled ? 'deep' : 'short';
+    }
+  </script>
+</body>
+</html>
