@@ -1338,6 +1338,19 @@
 </head>
 
 <body>
+  <div id="intro-container" style="position: fixed; inset: 0; z-index: 99999; background: var(--bg-dark); display: flex; align-items: center; justify-content: center;">
+  
+  <div id="intro-loading" style="position: absolute; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+    <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: #6366f1;"></i>
+    <span style="color: #a5b4fc; font-size: 0.9rem;">Memuat Pretvfx-AI</span>
+  </div>
+
+  <video id="intro-video" src="video.mp4" 
+         autoplay muted playsinline 
+         style="width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease; pointer-events: none;">
+  </video>
+</div>
+
 
   <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
     <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -1657,6 +1670,45 @@
   </div>
 
   <script>
+  // Tahan welcome + animasi ketik sampai intro selesai.
+  let introFinished = false;
+  let resolveIntroFinished;
+  const introFinishedPromise = new Promise(resolve => {
+    resolveIntroFinished = resolve;
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const introContainer = document.getElementById('intro-container');
+    const introVideo = document.getElementById('intro-video');
+    const introLoading = document.getElementById('intro-loading');
+
+    // Ketika video sudah siap diputar
+    introVideo.addEventListener('canplaythrough', () => {
+      introLoading.style.display = 'none';
+      introVideo.style.opacity = '1';
+    });
+
+    // Setelah video benar-benar selesai, baru izinkan welcome + typing.
+    introVideo.addEventListener('ended', () => {
+      introContainer.style.transition = "opacity 0.5s ease";
+      introContainer.style.opacity = "0";
+
+      setTimeout(() => {
+        introContainer.style.display = 'none';
+        introFinished = true;
+        resolveIntroFinished();
+      }, 500);
+    });
+
+    // Kalau video gagal dimuat, langsung lanjut.
+    introVideo.addEventListener('error', () => {
+      introContainer.style.display = 'none';
+      introFinished = true;
+      resolveIntroFinished();
+    });
+  });
+  
+
     const SUPABASE_URL = "https://avomctrjaroyourindwh.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_C5VqC9QjJoRpyQgQEUPZeg_vgBVlOEw";
 
@@ -1833,7 +1885,12 @@
       loadChatSessions();
       currentChatId = createNewChatId();
       renderChatHistoryList();
+
+      // Model boleh dimuat saat intro berjalan.
+      // Welcome + animasi ketik menunggu video selesai.
       await fetchActiveModels();
+      await introFinishedPromise;
+
       renderWelcomeMessage();
     });
 
@@ -2005,7 +2062,7 @@ function startLoopTyping() {
 
   // Daftar kalimat yang akan bergantian diketik
   const phrases = [
-    'Selamat datang di Pretvfx-AI',
+    'Slamat datang di Pretvfx-AI',
     'Pretvfx-AI siap membantu!!!',
     'Gratis untuk semua model!!!',
     'Mau tanya tentang apa?',
