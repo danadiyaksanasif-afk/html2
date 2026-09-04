@@ -3410,6 +3410,47 @@ function startLoopTyping() {
         document.getElementById('imageInput').click(); 
     }, 250);
 }
+// Fungsi pembuka picker file dari bottom sheet
+function openPhotoPicker() {
+  document.getElementById('imageInput').click();
+  toggleBottomSheet();
+}
+
+function openCamera() {
+  document.getElementById('cameraInput').click();
+  toggleBottomSheet();
+}
+
+function openVideoPicker() {
+  document.getElementById('videoInput').click();
+  toggleBottomSheet();
+}
+
+function openFilePicker() {
+  document.getElementById('fileInput').click();
+  toggleBottomSheet();
+}
+
+// Fungsi untuk me-reset/menghapus gambar yang dipilih
+function clearImage() {
+  base64ImageData = null;
+  selectedMediaKind = null;
+  selectedMediaMime = null;
+  
+  const wrapper = document.getElementById('imagePreviewWrapper');
+  const img = document.getElementById('imagePreview');
+  const video = document.getElementById('videoPreview');
+  
+  if (img) {
+    img.src = '';
+    img.classList.remove('active');
+  }
+  if (video) {
+    video.src = '';
+    video.classList.remove('active');
+  }
+  if (wrapper) wrapper.style.display = 'none';
+}
 
     async function sendMessage() {
       const input = document.getElementById('promptInput');
