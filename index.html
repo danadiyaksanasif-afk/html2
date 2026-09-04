@@ -2,7 +2,28 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+
+  <!-- Hitung tinggi layar yang BENAR-BENAR terlihat (di luar keyboard) lalu simpan ke --app-height.
+       100dvh saja tidak cukup di banyak browser Android/iOS karena defaultnya keyboard cuma "menutupi"
+       konten, bukan bikin viewport-nya menyusut. Dengan ini, .welcome-screen ikut re-center pas keyboard buka. -->
+  <script>
+    (function () {
+      function setAppHeight() {
+        var h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+        document.documentElement.style.setProperty('--app-height', h + 'px');
+      }
+      setAppHeight();
+      window.addEventListener('resize', setAppHeight);
+      window.addEventListener('orientationchange', setAppHeight);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', setAppHeight);
+        window.visualViewport.addEventListener('scroll', setAppHeight);
+      }
+    })();
+  </script>
+
   <title>Pretv X One - AI Interface</title>
 
   <!-- Font Awesome CDN -->
@@ -52,25 +73,40 @@
       color: #ffffff;
     }
 
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      height: 100vh;
-      display: flex;
-      overflow: hidden;
-      background-image:
-        radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
-        radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 45%);
-    }
+html, body {
+  max-width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
 
-    button, select, textarea { font: inherit; }
 
-    .app-container {
-      display: flex;
-      width: 100vw;
-      height: 100vh;
-      position: relative;
-    }
+body {
+  position: fixed; /* Kunci kerangka dokumen */
+  inset: 0;        /* Tempelkan ke seluruh batas layar */
+  width: 100%;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  height: var(--app-height, 100dvh); /* Ikut tinggi layar asli */
+  display: flex;
+  overflow: hidden;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 45%);
+}
+
+
+
+.app-container {
+  display: flex;
+  width: 100%;
+  height: var(--app-height, 100dvh); /* Ikut tinggi layar asli (menyusut kalau keyboard buka) */
+  position: relative;
+  overflow-x: hidden;
+}
 
     /* SIDEBAR */
     .sidebar-overlay {
@@ -321,12 +357,14 @@
 
     /* MAIN */
     .chat-main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      min-width: 0;
-    }
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+  min-height: 0; /* Wajib ada agar flex item bisa menyusut dengan benar */
+  overflow: hidden; /* Mencegah elemen utama bocor keluar */
+}
 
     .sidebar,
     .drawer,
@@ -392,15 +430,16 @@
     }
 
     .messages-container {
-      padding-top: 95px !important;
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
+  padding-top: 100px !important;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden; /* Tambahkan baris ini */
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
     .welcome-screen {
       flex: 1;
@@ -459,12 +498,14 @@
 
     /* MESSAGES & ACTIONS */
     .message {
-      max-width: 80%;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      animation: fadeIn 0.3s ease;
-    }
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeIn 0.3s ease;
+  min-width: 0; /* Tambahkan baris ini */
+}
+
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
@@ -473,17 +514,23 @@
 
     .message.user { align-self: flex-end; }
     .message.ai {
-      align-self: flex-start;
-      max-width: 100%; /* jawaban AI pakai lebar penuh, gak nyisain area kosong di kanan kayak bubble user */
-    }
+  align-self: flex-start;
+  width: 100%; /* Paksa ukuran absolut */
+  max-width: 100%;
+  min-width: 0; /* Sangat krusial agar flexbox bisa menyusut/tidak bocor */
+}
+
 
     .message-content {
-      padding: 16px 20px;
-      border-radius: 16px;
-      font-size: 0.95rem;
-      line-height: 1.6;
-      word-break: break-word;
-    }
+  padding: 16px 20px;
+  border-radius: 16px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden; /* Potong regangan elemen dari dalam */
+}
 
     .message.user .message-content {
       background: var(--user-msg-bg);
@@ -499,13 +546,24 @@
       backdrop-filter: none;
     }
 
-    .message-img {
-      max-width: 230px;
-      max-height: 260px;
-      object-fit: cover;
+    .message-img,
+    .message-video {
+      max-width: 360px;
+      max-height: 320px;
+      width: auto;
       border-radius: 10px;
       margin-bottom: 6px;
       border: 1px solid var(--panel-border);
+      display: block;
+      background: #000;
+    }
+
+    .message-img {
+      object-fit: cover;
+    }
+
+    .message-video {
+      object-fit: contain;
     }
 
     .message-actions {
@@ -658,12 +716,19 @@
       margin-bottom: -4px;
     }
 
-    .image-preview-wrapper img {
+    .image-preview-wrapper img,
+    .image-preview-wrapper video {
       width: 58px;
       height: 58px;
       object-fit: cover;
       border-radius: 10px;
       border: 1px solid var(--panel-border);
+      display: none;
+    }
+
+    .image-preview-wrapper img.active,
+    .image-preview-wrapper video.active {
+      display: block;
     }
 
     .btn-remove-img {
@@ -1077,14 +1142,29 @@
     .other-models-button:hover { background: rgba(255,255,255,0.06); }
 
     /* PLUS BOTTOM SHEET */
+    /* PLUS BOTTOM SHEET: kartu dibuat horizontal dan bisa digeser/swipe */
     .sheet-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      display: flex;
+      flex-wrap: nowrap;
       gap: 16px;
       margin-bottom: 24px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 2px 2px 8px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      scrollbar-width: none;
+    }
+
+    .sheet-grid::-webkit-scrollbar {
+      display: none;
     }
 
     .sheet-item-card {
+      flex: 0 0 calc((100% - 32px) / 3);
+      width: calc((100% - 32px) / 3);
+      scroll-snap-align: start;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 16px;
@@ -1196,24 +1276,167 @@
       color: inherit;
     }
 
-    .message-content .katex-display {
-      margin: 12px 0;
-      padding: 14px 16px;
-      background: rgba(99, 102, 241, 0.07);
-      border: 1px solid rgba(99, 102, 241, 0.18);
-      border-radius: 10px;
-      overflow-x: auto;
-      overflow-y: hidden;
-    }
+    .message-content .katex-display,
+.message-content pre {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 
     .message-content .katex-error {
       color: var(--danger);
     }
 
-    .message-content p { margin-bottom: 8px; }
+    .message-content p { margin: 0 0 12px; }
     .message-content p:last-child { margin-bottom: 0; }
-    .message-content ul, .message-content ol { margin-left: 20px; margin-bottom: 8px; }
-    .message-content a { color: #60a5fa; }
+    .message-content h1,
+    .message-content h2,
+    .message-content h3,
+    .message-content h4,
+    .message-content h5,
+    .message-content h6 {
+      margin: 18px 0 9px;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+    }
+    .message-content h1 { font-size: 1.45rem; }
+    .message-content h2 { font-size: 1.28rem; }
+    .message-content h3 { font-size: 1.12rem; }
+    .message-content h4,
+    .message-content h5,
+    .message-content h6 { font-size: 1rem; }
+    .message-content ul, .message-content ol { margin: 0 0 12px 21px; padding-left: 3px; }
+    .message-content li { margin: 4px 0; }
+    .message-content blockquote {
+      margin: 12px 0;
+      padding: 8px 0 8px 14px;
+      border-left: 2px solid rgba(156, 163, 175, 0.26);
+      color: #cbd5e1;
+    }
+    .message-content hr {
+      border: 0;
+      border-top: 1px solid rgba(148, 163, 184, 0.16);
+      margin: 18px 0;
+    }
+    .message-content strong { font-weight: 700; }
+    .message-content a { color: #60a5fa; text-decoration: none; }
+    .message-content a:hover { text-decoration: underline; }
+
+    /* ===== INLINE CODE + CODE BLOCK COPY ===== */
+    .message-content :not(pre) > code {
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.065);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      color: #e5e7eb;
+      font-size: 0.88em;
+    }
+
+    .code-block-wrap {
+      position: relative;
+      margin: 12px 0;
+    }
+
+    .code-block-wrap pre {
+      margin: 0 !important;
+      padding: 14px 48px 14px 14px !important;
+      border: 1px solid rgba(148, 163, 184, 0.12) !important;
+      background: rgba(4, 7, 12, 0.72) !important;
+      border-radius: 10px !important;
+    }
+
+    .code-copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 2;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.045);
+      color: #aeb7c7;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .code-copy-btn:hover {
+      background: rgba(255,255,255,0.10);
+      color: #fff;
+      border-color: rgba(255,255,255,0.14);
+    }
+
+    .code-copy-btn.copied {
+      color: #86efac;
+      border-color: rgba(134,239,172,0.18);
+    }
+
+    /* ===== TAP / CLICK BUBBLE COPY POPUP ===== */
+    .bubble-copy-popup {
+      position: fixed;
+      z-index: 100000;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 11px;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      background: rgba(13, 17, 28, 0.96);
+      color: #f3f4f6;
+      font-size: 0.78rem;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.30);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      opacity: 0;
+      transform: translateY(5px) scale(0.97);
+      pointer-events: none;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      white-space: nowrap;
+    }
+
+    .bubble-copy-popup.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .bubble-copy-popup button {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .bubble-copy-popup i { font-size: 0.76rem; }
+
+    @media (max-width: 768px) {
+      .message-content {
+        font-size: 0.96rem;
+        line-height: 1.68;
+      }
+
+      .message-content h1 { font-size: 1.34rem; }
+      .message-content h2 { font-size: 1.20rem; }
+      .message-content h3 { font-size: 1.06rem; }
+
+      .bubble-copy-popup {
+        padding: 9px 12px;
+        border-radius: 11px;
+      }
+    }
 
     .icon {
       width: 20px;
@@ -1334,6 +1557,252 @@
   display: inline-block;
 }
 
+/* ===== AKUN / LOGIN SIDEBAR ===== */
+.sidebar-account {
+  flex-shrink: 0;
+  margin: 0 16px 12px;
+}
+
+.account-login-btn {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid var(--panel-border);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: all 0.2s ease;
+}
+
+.account-login-btn:hover {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: #6366f1;
+}
+
+.account-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(99, 102, 241, 0.16);
+}
+
+.account-avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.account-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-name {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-plan {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.account-plan.free { color: var(--text-muted); }
+
+.account-plan.premium {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.account-logout-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.account-logout-btn:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ===== FORM SHEET LOGIN/DAFTAR ===== */
+.auth-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 18px;
+}
+
+.auth-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 9px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-field label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #aeb5c2;
+  letter-spacing: 0.3px;
+}
+
+.auth-field input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--panel-border);
+  color: #fff;
+  outline: none;
+  border-radius: 10px;
+  padding: 12px 13px;
+  font-size: 0.9rem;
+}
+
+.auth-field input:focus {
+  border-color: #6366f1;
+}
+
+.auth-submit-btn {
+  margin-top: 2px;
+  padding: 13px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent-gradient);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.auth-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.auth-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #ff8f8f;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  margin-bottom: 14px;
+}
+
+.auth-hint {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ===== MODEL PREMIUM (TERKUNCI) ===== */
+.model-badge.premium-badge {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.18), rgba(245, 158, 11, 0.18));
+  color: #fbbf24;
+}
+
+.model-option.locked {
+  opacity: 1;
+}
+
+.model-lock-icon {
+  flex-shrink: 0;
+  width: 22px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+.image-preview {
+  position: relative;
+  display: inline-block;
+  margin: 10px 12px 0;
+}
+
+.image-preview img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
+.image-preview button {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: #333;
+  color: white;
+  font-size: 18px;
+  line-height: 20px;
+}
+    .model-badge.free-badge {
+    background: rgba(16, 185, 129, 0.15); /* Warna hijau transparan */
+    color: #10b981; /* Teks hijau terang */
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
   </style>
 </head>
 
@@ -1359,6 +1828,13 @@
       <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
   </svg>
+
+  <div id="bubbleCopyPopup" class="bubble-copy-popup" aria-hidden="true">
+    <button type="button" onclick="copyPopupText()">
+      <i class="fa-regular fa-copy"></i>
+      <span id="bubbleCopyLabel">Salin</span>
+    </button>
+  </div>
 
   <div class="app-container">
 
@@ -1398,6 +1874,8 @@
         <div class="chat-history" id="chatHistory"></div>
       </div>
 
+      <div class="sidebar-account" id="sidebarAccount"></div>
+
   <!-- Tambahkan kode footer di sini -->
     <!-- Teks Modded By dengan Gradasi -->
   <div class="sidebar-footer">
@@ -1435,12 +1913,13 @@
 
           <div class="image-preview-wrapper" id="imagePreviewWrapper">
             <img id="imagePreview" src="" alt="Preview">
+            <video id="videoPreview" src="" controls muted playsinline preload="metadata"></video>
             <button class="btn-remove-img" onclick="clearImage()">✕</button>
           </div>
 
           <textarea
             id="promptInput"
-            placeholder="Mengobrol dengan Pretv X One..."
+            placeholder="Mengobrol dengan Pretvfx-AI..."
             onkeydown="handleKeyDown(event)"
             oninput="autoResizeTextarea(this)"
           ></textarea>
@@ -1467,13 +1946,40 @@
 
             <div class="toolbar-right">
 
-              <input
-                type="file"
-                id="imageInput"
-                accept="image/*"
-                style="display:none;"
-                onchange="handleImageSelect(event)"
-              >
+              <!-- Pilih foto dari galeri -->
+<input
+  type="file"
+  id="imageInput"
+  accept="image/*"
+  style="display:none;"
+  onchange="handleImageSelect(event)"
+>
+
+<input
+  type="file"
+  id="cameraInput"
+  accept="image/*"
+  capture="environment"
+  style="display:none;"
+  onchange="handleImageSelect(event)"
+>
+
+<input
+  type="file"
+  id="fileInput"
+  accept="image/*,video/*"
+  style="display:none;"
+  onchange="handleGeneralFileSelect(event)"
+>
+
+<input
+  type="file"
+  id="videoInput"
+  accept="video/mp4,video/mpeg,video/quicktime,video/avi,video/x-flv,video/mpg,video/webm,video/wmv,video/3gpp"
+  style="display:none;"
+  onchange="handleVideoSelect(event)"
+>
+
 
               <button class="icon-btn" title="Voice Input">
                 <svg class="icon" viewBox="0 0 24 24">
@@ -1513,8 +2019,8 @@
     <div class="sheet-handle"></div>
 
     <div class="model-sheet-header">
-      <button class="icon-btn model-sheet-close" onclick="toggleModelSheet()" title="Tutup">
-        <svg class="icon" viewBox="0 0 24 24">
+      <button class="icon-btn model-sheet-close" id="modelSheetNavBtn" onclick="handleModelSheetNav()" title="Tutup">
+        <svg class="icon" id="modelSheetNavIcon" viewBox="0 0 24 24">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
@@ -1529,26 +2035,87 @@
       <div class="model-empty">Memuat model dari Admin Control...</div>
     </div>
 
-    <div class="research-setting">
-      <div class="research-info">
-        <div class="research-title">Riset mendalam</div>
-        <div class="research-description">AI akan berpikir lebih teliti dan memberikan jawaban lebih lengkap.</div>
-      </div>
+    <div class="research-setting" id="researchSettingContainer">
+  <div class="research-info">
+    <div class="research-title">Riset mendalam</div>
+    <div class="research-description">AI akan berpikir lebih teliti dan memberikan jawaban lebih lengkap.</div>
+  </div>
 
-      <label class="research-switch">
-        <input type="checkbox" id="deepResearchToggle" onchange="toggleDeepResearch(this.checked)">
-        <span class="research-slider"></span>
-      </label>
-    </div>
+  <label class="research-switch">
+    <input type="checkbox" id="deepResearchToggle" onchange="toggleDeepResearch(this.checked)">
+    <span class="research-slider"></span>
+  </label>
+</div>
+
 
     <div class="model-sheet-footer">
-      <button class="other-models-button" onclick="showOtherModelsInfo()">
-        <span>••• &nbsp; Model lainnya</span>
+  <button class="other-models-button" onclick="toggleOtherModels()">
+    <span>••• &nbsp; Model lainnya</span>
+    <svg class="icon" viewBox="0 0 24 24">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </button>
+</div>
+
+
+  </div>
+
+  <!-- AUTH SHEET (LOGIN / DAFTAR) -->
+  <div class="sheet-overlay" id="authSheetOverlay" onclick="closeAuthSheet()"></div>
+
+  <div class="bottom-sheet" id="authSheet">
+
+    <div class="sheet-handle"></div>
+
+    <div class="sheet-header">
+      <button class="icon-btn" onclick="closeAuthSheet()" title="Tutup">
         <svg class="icon" viewBox="0 0 24 24">
-          <polyline points="9 18 15 12 9 6"></polyline>
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
       </button>
+
+      <h4 id="authSheetTitle">Masuk Akun</h4>
+
+      <div class="sheet-header-spacer"></div>
     </div>
+
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Masuk</button>
+      <button type="button" class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Daftar</button>
+    </div>
+
+    <div class="auth-error" id="authError" style="display:none;"></div>
+
+    <form class="auth-form" id="loginForm" onsubmit="handleLogin(event)">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" required placeholder="nama@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" required placeholder="Masukkan password" autocomplete="current-password">
+      </div>
+      <button type="submit" class="auth-submit-btn" id="loginSubmitBtn">Masuk</button>
+    </form>
+
+    <form class="auth-form" id="signupForm" style="display:none;" onsubmit="handleSignup(event)">
+      <div class="auth-field">
+        <label>Username</label>
+        <input type="text" id="signupUsername" required placeholder="Nama pengguna" autocomplete="username">
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="signupEmail" required placeholder="nama@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="signupPassword" required minlength="6" placeholder="Minimal 6 karakter" autocomplete="new-password">
+      </div>
+      <button type="submit" class="auth-submit-btn" id="signupSubmitBtn">Buat Akun</button>
+    </form>
+
+    <div class="auth-hint">Akses model Premium (Alphax, Glux, dll) dibuka oleh Admin setelah kamu login.</div>
 
   </div>
 
@@ -1574,7 +2141,7 @@
 
     <div class="sheet-grid">
 
-      <div class="sheet-item-card" onclick="openCameraInfo()">
+      <div class="sheet-item-card" onclick="openCamera()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
           <circle cx="12" cy="13" r="4"></circle>
@@ -1582,13 +2149,23 @@
         <span>Kamera</span>
       </div>
 
-      <div class="sheet-item-card" onclick="document.getElementById('imageInput').click(); toggleBottomSheet();">
+      <div class="sheet-item-card" onclick="openPhotoPicker()">
+
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
           <circle cx="8.5" cy="8.5" r="1.5"></circle>
           <polyline points="21 15 16 10 5 21"></polyline>
         </svg>
         <span>Foto</span>
+      </div>
+
+      <div class="sheet-item-card" onclick="openVideoPicker()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="5" width="15" height="14" rx="2"></rect>
+          <polygon points="10,9 10,15 14,12"></polygon>
+          <path d="M18 10l3-2v8l-3-2"></path>
+        </svg>
+        <span>Video</span>
       </div>
 
       <div class="sheet-item-card" onclick="openFilePicker()">
@@ -1670,6 +2247,81 @@
   </div>
 
   <script>
+let viewingOtherModels = false;
+    
+async function handleGeneralFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Jika file yang dipilih dari menu "File" adalah gambar, tampilkan preview-nya
+    if (file.type.startsWith('image/')) {
+        try {
+            base64ImageData = await compressImageFile(file);
+            document.getElementById('imagePreview').src = base64ImageData;
+            document.getElementById('imagePreviewWrapper').style.display = 'block';
+        } catch (error) {
+            alert('Gagal memproses gambar, coba foto lain.');
+        }
+    } else {
+        // Jika yang dipilih bukan gambar (misal PDF atau Word)
+        alert('Saat ini hanya file gambar yang didukung untuk preview.');
+    }
+    
+    // Reset input agar bisa memilih file yang sama berulang kali
+    event.target.value = '';
+}
+    document.getElementById('imageInput').click();
+    function removeSelectedImage() {
+  selectedFile = null;
+  base64ImageData = null;
+
+  const preview = document.getElementById('imagePreview');
+  const img = document.getElementById('previewImage');
+
+  img.src = '';
+  preview.style.display = 'none';
+}
+    function handleImageSelect(event) {
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  if (!currentUser) {
+    event.target.value = '';
+    openAuthSheet('login');
+    return;
+  }
+
+  // Pastikan yang dipilih memang gambar
+  if (!file.type.startsWith('image/')) {
+    event.target.value = '';
+    return;
+  }
+
+  selectedFile = file;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const preview = document.getElementById('imagePreview');
+    const img = document.getElementById('previewImage');
+
+    img.src = e.target.result;
+    preview.style.display = 'inline-block';
+
+    // Simpan Base64 untuk dikirim ke AI
+    base64ImageData = e.target.result.split(',')[1];
+  };
+
+  reader.readAsDataURL(file);
+
+  // Jangan masukkan nama file ke textarea
+  document.getElementById('promptInput').value = '';
+  document.getElementById('promptInput').focus();
+
+  // Bisa pilih foto yang sama lagi
+  event.target.value = '';
+}
   // Tahan welcome + animasi ketik sampai intro selesai.
   let introFinished = false;
   let resolveIntroFinished;
@@ -1721,10 +2373,301 @@
     let currentSelectedModel = null;
     let currentChatMessages = [];
     let base64ImageData = null;
+    let selectedMediaKind = null; // image | video
+    let selectedMediaMime = null;
     let abortController = null;
 
     let responseMode = 'short';
     let webSearchEnabled = true;
+
+    // ===== AKUN / LOGIN & AKSES PREMIUM =====
+    const USER_SESSION_KEY = 'pretvfx_user_session';
+    let currentUser = null; // { id, username, email, is_premium }
+    let userRealtimeChannel = null;
+
+    async function hashPassword(password) {
+      const enc = new TextEncoder().encode(password);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function loadSessionFromStorage() {
+      try {
+        const raw = localStorage.getItem(USER_SESSION_KEY);
+        currentUser = raw ? JSON.parse(raw) : null;
+      } catch (error) {
+        currentUser = null;
+      }
+    }
+
+    function saveSession(user) {
+      currentUser = user;
+      localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
+    }
+
+    function clearSession() {
+      currentUser = null;
+      localStorage.removeItem(USER_SESSION_KEY);
+      if (userRealtimeChannel) {
+        supabaseClient.removeChannel(userRealtimeChannel);
+        userRealtimeChannel = null;
+      }
+    }
+
+    function renderAccountUI() {
+      const container = document.getElementById('sidebarAccount');
+      if (!container) return;
+
+      if (!currentUser) {
+        container.innerHTML = `
+          <button class="account-login-btn" onclick="openAuthSheet('login')">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            Login / Daftar Akun
+          </button>
+        `;
+        return;
+      }
+
+      const initial = (currentUser.username || currentUser.email || '?').trim().charAt(0);
+      container.innerHTML = `
+        <div class="account-user-row">
+          <div class="account-avatar">${escapeHtml(initial)}</div>
+          <div class="account-info">
+            <div class="account-name">${escapeHtml(currentUser.username)}</div>
+            <div class="account-plan ${currentUser.is_premium ? 'premium' : 'free'}">
+              ${currentUser.is_premium ? '<i class="fa-solid fa-crown"></i> Premium' : 'Akun Free'}
+            </div>
+          </div>
+          <button class="account-logout-btn" onclick="logoutUser()" title="Keluar akun">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    function openAuthSheet(mode) {
+      switchAuthTab(mode || 'login');
+      document.getElementById('authSheet').classList.add('open');
+      document.getElementById('authSheetOverlay').classList.add('active');
+      if (window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('open')) {
+        toggleSidebar();
+      }
+    }
+
+    function closeAuthSheet() {
+      document.getElementById('authSheet').classList.remove('open');
+      document.getElementById('authSheetOverlay').classList.remove('active');
+      hideAuthError();
+    }
+
+    function switchAuthTab(tab) {
+      const isLogin = tab !== 'signup';
+      document.getElementById('tabLogin').classList.toggle('active', isLogin);
+      document.getElementById('tabSignup').classList.toggle('active', !isLogin);
+      document.getElementById('loginForm').style.display = isLogin ? 'flex' : 'none';
+      document.getElementById('signupForm').style.display = isLogin ? 'none' : 'flex';
+      document.getElementById('authSheetTitle').textContent = isLogin ? 'Masuk Akun' : 'Buat Akun Baru';
+      hideAuthError();
+    }
+
+    function showAuthError(message) {
+      const el = document.getElementById('authError');
+      el.textContent = message;
+      el.style.display = 'block';
+    }
+
+    function hideAuthError() {
+      const el = document.getElementById('authError');
+      el.style.display = 'none';
+      el.textContent = '';
+    }
+
+    async function handleSignup(event) {
+      event.preventDefault();
+      hideAuthError();
+
+      const username = document.getElementById('signupUsername').value.trim();
+      const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+      const password = document.getElementById('signupPassword').value;
+      const btn = document.getElementById('signupSubmitBtn');
+
+      if (!username || !email || !password) return;
+      if (password.length < 6) {
+        showAuthError('Password minimal 6 karakter.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Memproses...';
+
+      try {
+        const password_hash = await hashPassword(password);
+        const { data, error } = await supabaseClient
+          .from('app_users')
+          .insert([{ username, email, password_hash }])
+          .select()
+          .single();
+
+        if (error) {
+          if (error.code === '23505' || /duplicate/i.test(error.message || '')) {
+            showAuthError('Username atau email sudah terdaftar.');
+          } else {
+            showAuthError('Gagal membuat akun: ' + error.message);
+          }
+          return;
+        }
+
+        saveSession({ id: data.id, username: data.username, email: data.email, is_premium: !!data.is_premium });
+        subscribeUserRealtime();
+        renderAccountUI();
+        renderModelList();
+        closeAuthSheet();
+      } catch (error) {
+        showAuthError('Terjadi kesalahan. Coba lagi.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Buat Akun';
+      }
+    }
+
+    async function handleLogin(event) {
+      event.preventDefault();
+      hideAuthError();
+
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginSubmitBtn');
+
+      if (!email || !password) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Memproses...';
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('app_users')
+          .select('*')
+          .eq('email', email)
+          .maybeSingle();
+
+        if (error || !data) {
+          showAuthError('Email belum terdaftar.');
+          return;
+        }
+
+        const password_hash = await hashPassword(password);
+        if (password_hash !== data.password_hash) {
+          showAuthError('Password salah.');
+          return;
+        }
+
+        saveSession({ id: data.id, username: data.username, email: data.email, is_premium: !!data.is_premium });
+        subscribeUserRealtime();
+        renderAccountUI();
+        renderModelList();
+        closeAuthSheet();
+      } catch (error) {
+        showAuthError('Terjadi kesalahan. Coba lagi.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Masuk';
+      }
+    }
+
+    function logoutUser() {
+      clearSession();
+      renderAccountUI();
+      renderModelList();
+    }
+
+    async function refreshCurrentUserPremium() {
+      if (!currentUser) return;
+      try {
+        const { data, error } = await supabaseClient
+          .from('app_users')
+          .select('username, email, is_premium')
+          .eq('id', currentUser.id)
+          .maybeSingle();
+
+        if (error || !data) return;
+
+        currentUser.is_premium = !!data.is_premium;
+        currentUser.username = data.username;
+        currentUser.email = data.email;
+        saveSession(currentUser);
+        renderAccountUI();
+        renderModelList();
+      } catch (error) {
+        // biarkan status akun yang lama tetap dipakai kalau gagal cek ulang
+      }
+    }
+
+    function subscribeUserRealtime() {
+      if (!currentUser || userRealtimeChannel) return;
+      userRealtimeChannel = supabaseClient
+        .channel('app_users_changes_' + currentUser.id)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'app_users',
+          filter: `id=eq.${currentUser.id}`
+        }, (payload) => {
+          if (!currentUser || !payload.new) return;
+          currentUser.is_premium = !!payload.new.is_premium;
+          currentUser.username = payload.new.username;
+          saveSession(currentUser);
+          renderAccountUI();
+          renderModelList();
+        })
+        .subscribe();
+    }
+
+    function isModelLocked(model) {
+      return !!model.is_premium && !(currentUser && currentUser.is_premium);
+    }
+
+    function closeModelSheet() {
+      const sheet = document.getElementById('modelBottomSheet');
+      const overlay = document.getElementById('modelSheetOverlay');
+      const button = document.getElementById('modelSelectorButton');
+
+      if (sheet) sheet.classList.remove('open');
+      if (overlay) overlay.classList.remove('active');
+      if (button) button.classList.remove('active');
+    }
+
+    function showPremiumLockedInfo() {
+      if (!currentUser) {
+        const modelSheet = document.getElementById('modelBottomSheet');
+        const modelOverlay = document.getElementById('modelSheetOverlay');
+        const modelButton = document.getElementById('modelSelectorButton');
+
+        // 1. Tutup MODEL SHEET sepenuhnya terlebih dahulu.
+        if (modelSheet) modelSheet.classList.remove('open');
+        if (modelOverlay) modelOverlay.classList.remove('active');
+        if (modelButton) modelButton.classList.remove('active');
+
+        // 2. Tunggu sampai animasi 0.3s selesai.
+        //    Login TIDAK boleh dibuka bersamaan dengan model sheet.
+        setTimeout(() => {
+          // Pastikan model sheet benar-benar tertutup sebelum Login dibuka.
+          if (modelSheet) modelSheet.style.visibility = 'hidden';
+          if (modelOverlay) modelOverlay.style.visibility = 'hidden';
+
+          openAuthSheet('login');
+
+          // Kembalikan style inline agar saat model dibuka lagi
+          // CSS normal tetap bekerja.
+          setTimeout(() => {
+            if (modelSheet) modelSheet.style.visibility = '';
+            if (modelOverlay) modelOverlay.style.visibility = '';
+          }, 50);
+        }, 360);
+        return;
+      }
+      alert('Model ini khusus akun Premium. Hubungi admin untuk upgrade akunmu ke Premium.');
+    }
+    // ===== AKHIR AKUN / LOGIN & AKSES PREMIUM =====
 
     // ===== RIWAYAT CHAT (disimpan di penyimpanan HP / localStorage) =====
     const CHAT_STORAGE_KEY = 'pretvfx_chat_sessions';
@@ -1855,7 +2798,7 @@
       const container = document.getElementById('messagesContainer');
       container.innerHTML = '';
       currentChatMessages.forEach(msg => {
-        appendMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.text, msg.image || null);
+        appendMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.text, msg.image || msg.video || null, false, msg.mediaKind || (msg.video ? 'video' : (msg.image ? 'image' : null)));
       });
 
       clearImage();
@@ -1885,6 +2828,13 @@
       loadChatSessions();
       currentChatId = createNewChatId();
       renderChatHistoryList();
+
+      loadSessionFromStorage();
+      renderAccountUI();
+      if (currentUser) {
+        subscribeUserRealtime();
+        refreshCurrentUserPremium();
+      }
 
       // Model boleh dimuat saat intro berjalan.
       // Welcome + animasi ketik menunggu video selesai.
@@ -1926,7 +2876,11 @@
 
         activeModels = data;
         const previousId = currentSelectedModel?.id;
-        currentSelectedModel = activeModels.find(model => String(model.id) === String(previousId)) || activeModels[0];
+        let restoredModel = activeModels.find(model => String(model.id) === String(previousId));
+        if (restoredModel && isModelLocked(restoredModel)) restoredModel = null;
+        currentSelectedModel = restoredModel
+          || activeModels.find(model => !isModelLocked(model))
+          || activeModels[0];
 
         renderModelSelector();
         renderModelList();
@@ -1960,36 +2914,60 @@
     }
 
     function renderModelList() {
-      const listElement = document.getElementById('modelList');
-      if (!activeModels.length) {
-        listElement.innerHTML = '<div class="model-empty">Tidak ada model aktif.</div>';
-        return;
-      }
+    const listElement = document.getElementById('modelList');
+    
+    // Filter model berdasarkan apakah sedang melihat menu "Model lainnya" atau "Utama"
+    const modelsToShow = activeModels.filter(model => {
+        if (viewingOtherModels) return model.category === 'other';
+        return !model.category || model.category === 'regular';
+    });
 
-      listElement.innerHTML = '';
-      activeModels.forEach(model => {
+    if (!modelsToShow.length) {
+        listElement.innerHTML = '<div class="model-empty">Tidak ada model di kategori ini.</div>';
+        return;
+    }
+
+    listElement.innerHTML = '';
+    modelsToShow.forEach(model => {
+        const locked = isModelLocked(model);
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'model-option' + (currentSelectedModel && String(currentSelectedModel.id) === String(model.id) ? ' selected' : '');
+        button.className = 'model-option'
+          + (currentSelectedModel && String(currentSelectedModel.id) === String(model.id) ? ' selected' : '')
+          + (locked ? ' locked' : '');
         const badge = getModelBadge(model);
 
         button.innerHTML = `
-          <div class="model-option-main">
-            <div class="model-option-title">
-              <span>${escapeHtml(getModelName(model))}</span>
-              ${badge ? `<span class="model-badge">${escapeHtml(badge)}</span>` : ''}
-            </div>
-            <div class="model-option-description">${escapeHtml(getModelDescription(model))}</div>
+        <div class="model-option-main">
+          <div class="model-option-title">
+            <span>${escapeHtml(getModelName(model))}</span>
+            ${model.is_premium 
+                ? '<span class="model-badge premium-badge"><i class="fa-solid fa-crown"></i> Premium</span>' 
+                : '<span class="model-badge free-badge">Free</span>'
+            }
+            ${badge ? `<span class="model-badge">${escapeHtml(badge)}</span>` : ''}
           </div>
-          <svg class="model-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="5 12 10 17 20 7"></polyline>
-          </svg>
+          <div class="model-option-description">${escapeHtml(getModelDescription(model))}</div>
+        </div>
+        ${locked
+          ? '<i class="fa-solid fa-lock model-lock-icon"></i>'
+          : `<svg class="model-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="5 12 10 17 20 7"></polyline>
+            </svg>`
+        }
         `;
 
-        button.addEventListener('click', () => selectModel(model));
+        button.addEventListener('click', () => {
+          if (locked) {
+            showPremiumLockedInfo();
+            return;
+          }
+          selectModel(model);
+        });
         listElement.appendChild(button);
-      });
-    }
+    });
+}
+
 
     function selectModel(model) {
       if (!model) return;
@@ -2009,6 +2987,7 @@
         overlay.classList.remove('active');
         button.classList.remove('active');
       } else {
+        if (currentUser) refreshCurrentUserPremium();
         renderModelList();
         sheet.classList.add('open');
         overlay.classList.add('active');
@@ -2017,11 +2996,19 @@
     }
 
     function getResponseModeInstruction() {
+      const creatorInstruction = `
+IDENTITAS APLIKASI: Kamu adalah AI yang digunakan di Pretvfx-AI.
+PEMBUAT APLIKASI: Zain Suryo Negoro.
+Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi Pretvfx-AI dibuat oleh Zain Suryo Negoro.
+Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google, OpenAI, Anthropic, atau penyedia model yang sedang digunakan.
+`;
+
       if (deepResearchEnabled) {
-        return 'Mode Riset Mendalam aktif. Berikan jawaban yang lebih teliti, lengkap, terstruktur, dan mendalam.';
+        return creatorInstruction + '\nMode Riset Mendalam aktif. Berikan jawaban yang lebih teliti, lengkap, terstruktur, dan mendalam. PENTING: Kamu WAJIB memproses dan menjawab sepenuhnya menggunakan Bahasa Indonesia.';
       }
-      return 'Mode Riset Mendalam tidak aktif. Jawab secara singkat, jelas, langsung ke inti, dan jangan terlalu panjang.';
+      return creatorInstruction + '\nMode Riset Mendalam tidak aktif. Jawab secara singkat, jelas, langsung ke inti, dan jangan terlalu panjang. PENTING: Kamu WAJIB memproses dan menjawab sepenuhnya menggunakan Bahasa Indonesia.';
     }
+
 
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -2222,34 +3209,207 @@ function startLoopTyping() {
       });
     }
 
+    function setMediaPreview(dataUrl, kind) {
+      const wrapper = document.getElementById('imagePreviewWrapper');
+      const img = document.getElementById('imagePreview');
+      const video = document.getElementById('videoPreview');
+
+      img.classList.remove('active');
+      video.classList.remove('active');
+      img.src = '';
+      video.src = '';
+
+      if (kind === 'video') {
+        video.src = dataUrl;
+        video.classList.add('active');
+      } else {
+        img.src = dataUrl;
+        img.classList.add('active');
+      }
+
+      wrapper.style.display = 'block';
+    }
+
     async function handleImageSelect(event) {
       const file = event.target.files[0];
       if (!file) return;
-      if (!file.type.startsWith('image/')) {
-        alert('File yang dipilih bukan gambar.');
+
+      if (!currentUser) {
+        event.target.value = '';
+        openAuthSheet('login');
         return;
       }
+
+      if (!file.type.startsWith('image/')) {
+        alert('File yang dipilih bukan gambar.');
+        event.target.value = '';
+        return;
+      }
+
       try {
-        // Foto dikecilkan & dikompres dulu supaya ringan dikirim ke AI dan tidak cepat memenuhi penyimpanan HP
         base64ImageData = await compressImageFile(file);
-        document.getElementById('imagePreview').src = base64ImageData;
-        document.getElementById('imagePreviewWrapper').style.display = 'block';
+        selectedMediaKind = 'image';
+        selectedMediaMime = 'image/jpeg';
+        setMediaPreview(base64ImageData, 'image');
+        document.getElementById('promptInput').focus();
       } catch (error) {
         alert('Gagal memproses gambar, coba foto lain.');
+      } finally {
+        event.target.value = '';
       }
+    }
+
+    async function handleVideoSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!currentUser) {
+        event.target.value = '';
+        toggleBottomSheet();
+        openAuthSheet('login');
+        return;
+      }
+
+      if (!file.type.startsWith('video/')) {
+        alert('File yang dipilih bukan video.');
+        event.target.value = '';
+        return;
+      }
+
+      // Inline video dikirim sebagai Base64. Batasi agar request browser tidak terlalu besar.
+      const maxVideoSize = 20 * 1024 * 1024;
+      if (file.size > maxVideoSize) {
+        alert('Video terlalu besar. Untuk upload langsung dari browser, gunakan video maksimal 20 MB.');
+        event.target.value = '';
+        return;
+      }
+
+      try {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = () => reject(new Error('Gagal membaca video'));
+          reader.readAsDataURL(file);
+        });
+
+        base64ImageData = dataUrl;
+        selectedMediaKind = 'video';
+        selectedMediaMime = file.type;
+        setMediaPreview(dataUrl, 'video');
+        document.getElementById('promptInput').focus();
+      } catch (error) {
+        alert('Gagal membaca video, coba video lain.');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    async function handleGeneralFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (file.type.startsWith('image/')) {
+        await handleImageSelect({ target: { files: [file], value: '' } });
+      } else if (file.type.startsWith('video/')) {
+        await handleVideoSelect({ target: { files: [file], value: '' } });
+      } else {
+        alert('Untuk saat ini, File yang dikirim ke AI hanya mendukung gambar dan video.');
+      }
+
+      event.target.value = '';
     }
 
     function clearImage() {
       base64ImageData = null;
-      document.getElementById('imagePreview').src = '';
-      document.getElementById('imagePreviewWrapper').style.display = 'none';
+      selectedMediaKind = null;
+      selectedMediaMime = null;
+
+      const img = document.getElementById('imagePreview');
+      const video = document.getElementById('videoPreview');
+      const wrapper = document.getElementById('imagePreviewWrapper');
+
+      img.src = '';
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      img.classList.remove('active');
+      video.classList.remove('active');
+      wrapper.style.display = 'none';
+
       document.getElementById('imageInput').value = '';
+      document.getElementById('cameraInput').value = '';
+      document.getElementById('fileInput').value = '';
+      document.getElementById('videoInput').value = '';
     }
 
     function openFilePicker() {
-      document.getElementById('imageInput').click();
+      if (!currentUser) {
+        toggleBottomSheet();
+        openAuthSheet('login');
+        return;
+      }
+
       toggleBottomSheet();
+
+      setTimeout(() => {
+        document.getElementById('fileInput').click();
+      }, 250);
     }
+
+    function openVideoPicker() {
+      if (!currentUser) {
+        toggleBottomSheet();
+        openAuthSheet('login');
+        return;
+      }
+
+      toggleBottomSheet();
+
+      setTimeout(() => {
+        document.getElementById('videoInput').click();
+      }, 250);
+    }
+
+    function openPhotoPicker() {
+      if (!currentUser) {
+        toggleBottomSheet();
+        openAuthSheet('login');
+        return;
+      }
+
+      toggleBottomSheet();
+      setTimeout(() => {
+        document.getElementById('imageInput').click();
+      }, 250);
+    }
+
+    function openFilePicker() {
+  if (!currentUser) {
+    toggleBottomSheet();
+    openAuthSheet('login');
+    return;
+  }
+
+  toggleBottomSheet();
+
+  setTimeout(() => {
+    document.getElementById('fileInput').click();
+  }, 250);
+}
+    function openPhotoPicker() {
+    // Cek apakah user belum login
+    if (!currentUser) {
+        toggleBottomSheet(); // Tutup menu opsi
+        openAuthSheet('login'); // Tampilkan form login
+        return; // Hentikan proses
+    }
+    
+    // Jika sudah login, tutup menu dan buka galeri
+    toggleBottomSheet();
+    setTimeout(() => { 
+        document.getElementById('imageInput').click(); 
+    }, 250);
+}
 
     async function sendMessage() {
       const input = document.getElementById('promptInput');
@@ -2261,16 +3421,35 @@ function startLoopTyping() {
         alert('Model belum tersedia.');
         return;
       }
+      if (isModelLocked(currentSelectedModel)) {
+        showPremiumLockedInfo();
+        return;
+      }
+
+      if (selectedMediaKind === 'video' && String(currentSelectedModel.provider).toLowerCase() !== 'gemini') {
+        alert('Upload video saat ini hanya didukung untuk model Glux QSL.');
+        return;
+      }
 
       if (container.querySelector('.welcome-screen')) container.innerHTML = '';
 
-      appendMessage('user', text, base64ImageData);
-      currentChatMessages.push({ role: 'user', text: text, image: base64ImageData });
+      const sentMedia = base64ImageData;
+      const sentMediaKind = selectedMediaKind;
+      const sentMediaMime = selectedMediaMime;
+
+      appendMessage('user', text, sentMedia, false, sentMediaKind);
+      currentChatMessages.push({
+        role: 'user',
+        text: text,
+        image: sentMediaKind === 'image' ? sentMedia : null,
+        video: sentMediaKind === 'video' ? sentMedia : null,
+        mediaKind: sentMediaKind,
+        mediaMime: sentMediaMime
+      });
       persistCurrentChat();
 
       input.value = '';
       input.style.height = '';
-      const sentImage = base64ImageData;
       clearImage();
 
       setLoadingState(true);
@@ -2280,7 +3459,7 @@ function startLoopTyping() {
       try {
         let aiResponseText = '';
         if (String(currentSelectedModel.provider).toLowerCase() === 'gemini') {
-          aiResponseText = await callGemini(currentSelectedModel, text, sentImage, abortController.signal);
+          aiResponseText = await callGemini(currentSelectedModel, text, sentMedia, sentMediaKind, sentMediaMime, abortController.signal);
         } else {
           aiResponseText = await callOpenAICompatible(currentSelectedModel, currentChatMessages, abortController.signal);
         }
@@ -2300,37 +3479,63 @@ function startLoopTyping() {
       }
     }
 
-    async function callGemini(modelConfig, prompt, imageBase64, signal) {
+    async function callGemini(modelConfig, prompt, mediaData, mediaKind, mediaMime, signal) {
       const endpoint = modelConfig.endpoint.replace(/\/+$/, '');
       const modelId = modelConfig.model_id.replace(/^models\//, '').replace(/\/+$/, '');
       const url = `${endpoint}/${modelId}:generateContent?key=` + encodeURIComponent(modelConfig.api_key);
 
       const parts = [];
-      if (prompt) parts.push({ text: `${getResponseModeInstruction()}\n\nPertanyaan pengguna:\n${prompt}` });
-      if (imageBase64) {
-        const mimeMatch = imageBase64.match(/^data:([^;]+);base64,/);
-        if (mimeMatch) {
-          parts.push({
-            inline_data: { mime_type: mimeMatch[1], data: imageBase64.split(',')[1] }
-          });
-        }
+      if (prompt) {
+        parts.push({ text: `${getResponseModeInstruction()}\n\nPertanyaan pengguna:\n${prompt}` });
+      }
+
+      if (mediaData) {
+        const mimeMatch = mediaData.match(/^data:([^;]+);base64,/);
+        const mimeType = mediaMime || (mimeMatch ? mimeMatch[1] : null);
+        const data = mediaData.includes(',') ? mediaData.split(',')[1] : mediaData;
+
+        if (!mimeType) throw new Error('MIME type media tidak ditemukan.');
+
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data: data
+          }
+        });
+      }
+
+      if (!parts.length) {
+        parts.push({ text: getResponseModeInstruction() });
       }
 
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: signal,
-        body: JSON.stringify({ contents: [{ role: 'user', parts: parts }] })
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }]
+          },
+          contents: [{ role: 'user', parts: parts }]
+        })
       });
 
       const json = await response.json();
       if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
-      return json.candidates[0].content.parts.filter(p => typeof p.text === 'string').map(p => p.text).join('');
+      return json?.candidates?.[0]?.content?.parts
+        ?.filter(p => typeof p.text === 'string')
+        ?.map(p => p.text)
+        ?.join('') || '';
     }
 
     async function callOpenAICompatible(modelConfig, history, signal) {
-      const messages = history.map(msg => {
-        const role = msg.role === 'assistant' ? 'assistant' : 'user';
+      const messages = [
+        {
+          role: 'system',
+          content: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.'
+        },
+        ...history.map(msg => {
+          const role = msg.role === 'assistant' ? 'assistant' : 'user';
         const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
 
         if (msg.image) {
@@ -2341,7 +3546,8 @@ function startLoopTyping() {
         }
 
         return { role, content: textContent };
-      });
+      })
+      ];
 
       const response = await fetch(modelConfig.endpoint, {
         method: 'POST',
@@ -2360,27 +3566,31 @@ function startLoopTyping() {
 
     let activeTypingStop = null;
 
-    function appendMessage(sender, text, image = null, animate = false) {
+    function appendMessage(sender, text, media = null, animate = false, mediaKind = null) {
       const container = document.getElementById('messagesContainer');
       const msgDiv = document.createElement('div');
 
       const shouldAnimate = animate && sender === 'ai' && !!text;
       msgDiv.className = `message ${sender}${shouldAnimate ? ' is-typing' : ''}`;
-      let imgHtml = image ? `<img src="${escapeHtml(image)}" class="message-img" alt="Uploaded Image">` : '';
+
+      let mediaHtml = '';
+      if (media) {
+        if (mediaKind === 'video') {
+          mediaHtml = `<video src="${escapeHtml(media)}" class="message-video" controls playsinline preload="metadata"></video>`;
+        } else {
+          mediaHtml = `<img src="${escapeHtml(media)}" class="message-img" alt="Uploaded Image">`;
+        }
+      }
+
       let parsedText = shouldAnimate
         ? ''
         : renderMessageHtml(text);
 
       msgDiv.innerHTML = `
-        ${imgHtml}
+        ${mediaHtml}
         <div class="message-content">${parsedText}</div>
 
         <div class="message-actions">
-          <button class="action-link" onclick="copyToClipboard(this)" title="Salin teks">
-            <i class="fa-regular fa-copy"></i>
-            <span>Salin</span>
-          </button>
-
           ${
             sender === 'ai'
               ? `
@@ -2509,6 +3719,13 @@ function startLoopTyping() {
       // Bungkus tabel dengan div yang bisa di-scroll horizontal biar kolomnya gak kegencet/kepotong di layar sempit
       html = html.replace(/<table>/g, '<div class="table-scroll"><table>').replace(/<\/table>/g, '</table></div>');
 
+      // Bungkus code block dan tambahkan tombol salin khusus untuk isi kode.
+      // Tombol berada DI DALAM code block, bukan di bawah jawaban.
+      html = html.replace(/<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g, (match, attrs, codeHtml) => {
+        const dataCode = encodeURIComponent(codeHtml);
+        return `<div class="code-block-wrap"><button class="code-copy-btn" type="button" data-code="${dataCode}" onclick="copyCodeBlock(this)" title="Salin kode" aria-label="Salin kode"><i class="fa-regular fa-copy"></i></button><pre><code${attrs}>${codeHtml}</code></pre></div>`;
+      });
+
       // 3) kembalikan rumus yang sudah dirender KaTeX ke posisi aslinya
       mathTokens.forEach((renderedHtml, i) => {
         html = html.split(`@@KMATH${i}@@`).join(renderedHtml);
@@ -2517,17 +3734,139 @@ function startLoopTyping() {
       return html;
     }
 
-    async function copyToClipboard(button) {
-      const content = button.closest('.message').querySelector('.message-content').innerText;
+    let bubbleCopySource = null;
+    let bubbleCopyTimer = null;
+
+    async function copyTextSafely(text) {
+      const value = String(text || '');
+      if (!value) return false;
+
       try {
-        await navigator.clipboard.writeText(content);
-        const original = button.innerHTML;
-        button.innerHTML = '<i class="fa-solid fa-check"></i><span>Tersalin!</span>';
-        setTimeout(() => { button.innerHTML = original; }, 2000);
+        await navigator.clipboard.writeText(value);
+        return true;
       } catch (error) {
-        alert('Gagal menyalin teks.');
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = value;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const ok = document.execCommand('copy');
+          ta.remove();
+          return ok;
+        } catch (fallbackError) {
+          return false;
+        }
       }
     }
+
+    function showBubbleCopyPopup(messageEl) {
+      const popup = document.getElementById('bubbleCopyPopup');
+      if (!popup || !messageEl) return;
+
+      const contentEl = messageEl.querySelector('.message-content');
+      if (!contentEl) return;
+      const text = contentEl.innerText.trim();
+      if (!text) return;
+
+      bubbleCopySource = text;
+      const rect = contentEl.getBoundingClientRect();
+      const popupWidth = 84;
+      const popupHeight = 40;
+      const gap = 7;
+
+      let left = rect.left + (rect.width / 2) - (popupWidth / 2);
+      left = Math.max(8, Math.min(left, window.innerWidth - popupWidth - 8));
+
+      let top = rect.top - popupHeight - gap;
+      if (top < 8) top = Math.min(window.innerHeight - popupHeight - 8, rect.bottom + gap);
+
+      popup.style.left = `${left}px`;
+      popup.style.top = `${top}px`;
+      popup.classList.add('show');
+      popup.setAttribute('aria-hidden', 'false');
+
+      const label = document.getElementById('bubbleCopyLabel');
+      if (label) label.textContent = 'Salin';
+
+      clearTimeout(bubbleCopyTimer);
+      bubbleCopyTimer = setTimeout(hideBubbleCopyPopup, 2200);
+    }
+
+    function hideBubbleCopyPopup() {
+      const popup = document.getElementById('bubbleCopyPopup');
+      if (!popup) return;
+      popup.classList.remove('show');
+      popup.setAttribute('aria-hidden', 'true');
+    }
+
+    async function copyPopupText() {
+      const ok = await copyTextSafely(bubbleCopySource);
+      const label = document.getElementById('bubbleCopyLabel');
+      const icon = document.querySelector('#bubbleCopyPopup i');
+
+      if (ok) {
+        if (label) label.textContent = 'Tersalin!';
+        if (icon) icon.className = 'fa-solid fa-check';
+      } else {
+        if (label) label.textContent = 'Gagal menyalin';
+      }
+
+      clearTimeout(bubbleCopyTimer);
+      bubbleCopyTimer = setTimeout(() => {
+        if (label) label.textContent = 'Salin';
+        if (icon) icon.className = 'fa-regular fa-copy';
+        hideBubbleCopyPopup();
+      }, 1400);
+    }
+
+    async function copyCodeBlock(button) {
+      if (!button) return;
+      let code = '';
+      try {
+        code = decodeURIComponent(button.dataset.code || '');
+      } catch (error) {
+        code = button.closest('.code-block-wrap')?.querySelector('code')?.innerText || '';
+      }
+
+      // marked HTML sudah ter-escape; innerText dari code element menghasilkan teks kode yang aman.
+      const codeEl = button.closest('.code-block-wrap')?.querySelector('code');
+      if (codeEl) code = codeEl.innerText;
+
+      const ok = await copyTextSafely(code);
+      const original = button.innerHTML;
+      button.classList.toggle('copied', ok);
+      button.innerHTML = ok
+        ? '<i class="fa-solid fa-check"></i>'
+        : '<i class="fa-solid fa-xmark"></i>';
+
+      clearTimeout(button._copyTimer);
+      button._copyTimer = setTimeout(() => {
+        button.innerHTML = original;
+        button.classList.remove('copied');
+      }, 1400);
+    }
+
+    document.addEventListener('click', (event) => {
+      const content = event.target.closest('.message-content');
+      const popup = event.target.closest('#bubbleCopyPopup');
+
+      if (popup) return;
+      if (content) {
+        // Klik code block jangan memunculkan popup teks umum; fokus ke tombol copy kode.
+        if (event.target.closest('.code-block-wrap')) return;
+        const message = content.closest('.message');
+        if (message) showBubbleCopyPopup(message);
+        return;
+      }
+
+      hideBubbleCopyPopup();
+    });
+
+    window.addEventListener('resize', hideBubbleCopyPopup);
+    window.addEventListener('scroll', hideBubbleCopyPopup, true);
 
     function stopGenerating() {
       if (abortController) abortController.abort();
@@ -2540,14 +3879,63 @@ function startLoopTyping() {
       document.getElementById('btnStop').style.display = isLoading ? 'flex' : 'none';
     }
 
-    function openCameraInfo() {
-      toggleBottomSheet();
-      alert('Kamera menggunakan fitur kamera perangkat.');
-    }
+    function openCamera() {
+  // Kamera hanya boleh digunakan setelah login
+  if (!currentUser) {
+    toggleBottomSheet();
+    openAuthSheet('login');
+    return;
+  }
+
+  toggleBottomSheet();
+
+  setTimeout(() => {
+    document.getElementById('cameraInput').click();
+  }, 250);
+}
 
     function showProjectInfo() { alert('Fitur proyek belum dikonfigurasi.'); }
     function showToolsInfo() { alert('Akses alat masih mengikuti konfigurasi Admin Control.'); }
-    function showOtherModelsInfo() { alert('Model lainnya akan mengikuti model aktif yang ditambahkan melalui Admin Control.'); }
+    function handleModelSheetNav() {
+      if (viewingOtherModels) {
+        toggleOtherModels();
+      } else {
+        toggleModelSheet();
+      }
+    }
+
+    function updateModelSheetNav() {
+      const btn = document.getElementById('modelSheetNavBtn');
+      const icon = document.getElementById('modelSheetNavIcon');
+      if (!btn || !icon) return;
+
+      if (viewingOtherModels) {
+        btn.title = 'Kembali';
+        icon.innerHTML = '<polyline points="15 18 9 12 15 6"></polyline>';
+      } else {
+        btn.title = 'Tutup';
+        icon.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+      }
+    }
+
+    function toggleOtherModels() {
+      viewingOtherModels = !viewingOtherModels;
+      renderModelList();
+      updateModelSheetNav();
+
+      const btn = document.querySelector('.other-models-button');
+      const researchContainer = document.getElementById('researchSettingContainer');
+
+      if (viewingOtherModels) {
+        if (btn) btn.style.display = 'none';
+        if (researchContainer) researchContainer.style.display = 'none';
+      } else {
+        if (btn) btn.style.display = 'flex';
+        if (researchContainer) researchContainer.style.display = 'flex';
+      }
+    }
+
+
 
     function toggleWebSearch() {
       const checkbox = document.getElementById('webSearchToggle');
@@ -2603,7 +3991,6 @@ function startLoopTyping() {
       parent.querySelectorAll('.feedback-btn').forEach(btn => btn.classList.remove('active'));
       button.classList.add('active');
     }
-
     let deepResearchEnabled = false;
     function toggleDeepResearch(enabled) {
       deepResearchEnabled = enabled;
