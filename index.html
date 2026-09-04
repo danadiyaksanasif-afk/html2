@@ -108,6 +108,54 @@ body {
   overflow-x: hidden;
 }
 
+    /* ===== CUSTOM WARNING MODAL ===== */
+    .warning-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(2, 4, 10, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .2s ease, visibility .2s ease;
+    }
+    .warning-modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; }
+    .warning-modal {
+      width: min(420px, 100%);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 13px;
+      padding: 20px;
+      border-radius: 20px;
+      background: linear-gradient(145deg, rgba(18,22,36,.98), rgba(10,13,23,.98));
+      border: 1px solid rgba(96,165,250,.28);
+      box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 32px rgba(59,130,246,.10);
+      transform: translateY(10px) scale(.98);
+      transition: transform .2s ease;
+    }
+    .warning-modal-overlay.show .warning-modal { transform: translateY(0) scale(1); }
+    .warning-modal-icon {
+      width: 42px; height: 42px; border-radius: 13px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(251,191,36,.12); color: #fbbf24;
+      border: 1px solid rgba(251,191,36,.22); font-size: 1.1rem;
+    }
+    .warning-modal-main h3 { color:#fff; font-size:1.03rem; margin:2px 0 5px; }
+    .warning-modal-main p { color:#b6becd; font-size:.86rem; line-height:1.5; }
+    .warning-modal-btn {
+      grid-column: 1 / -1; width:100%; padding:11px 14px; margin-top:2px;
+      border:1px solid rgba(96,165,250,.30); border-radius:11px;
+      background: linear-gradient(90deg, rgba(59,130,246,.20), rgba(99,102,241,.20));
+      color:#dbeafe; font-weight:700; cursor:pointer;
+    }
+    .warning-modal-btn:active { transform: scale(.99); }
+
     /* SIDEBAR */
     .sidebar-overlay {
       position: fixed;
@@ -566,6 +614,20 @@ body {
       object-fit: contain;
     }
 
+    .message-media-grid {
+      display:flex; flex-wrap:wrap; gap:8px; max-width:100%; margin-bottom:6px;
+    }
+    .message-media-grid .message-img { margin-bottom:0; }
+    .message-video-wrap { position:relative; width:fit-content; max-width:360px; cursor:pointer; }
+    .message-video-wrap .message-video { margin-bottom:0; }
+    .message-video-play {
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.58); color:#fff; pointer-events:none;
+      border:1px solid rgba(255,255,255,.16);
+    }
+
+
     .message-actions {
       display: flex;
       align-items: center;
@@ -712,41 +774,71 @@ body {
     .image-preview-wrapper {
       display: none;
       position: relative;
-      width: fit-content;
+      width: 100%;
       margin-bottom: -4px;
+      padding-right: 8px;
     }
 
-    .image-preview-wrapper img,
-    .image-preview-wrapper video {
-      width: 58px;
-      height: 58px;
-      object-fit: cover;
-      border-radius: 10px;
+    .media-preview-list {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 3px 4px 3px 2px;
+    }
+    .media-preview-list::-webkit-scrollbar { display:none; }
+    .media-preview-thumb {
+      position: relative;
+      flex: 0 0 auto;
+      width: 64px;
+      height: 64px;
+      border-radius: 11px;
+      overflow: visible;
+      background: #000;
       border: 1px solid var(--panel-border);
-      display: none;
     }
-
-    .image-preview-wrapper img.active,
-    .image-preview-wrapper video.active {
+    .media-preview-thumb-media {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       display: block;
+      border-radius: 10px;
     }
-
-    .btn-remove-img {
+    .media-preview-thumb-remove {
       position: absolute;
       top: -6px;
       right: -6px;
-      background: var(--danger);
-      color: #fff;
-      border: none;
+      width: 21px;
+      height: 21px;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,.18);
       border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      font-size: 10px;
-      cursor: pointer;
+      background: rgba(239,68,68,.96);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 10px;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 3;
+      box-shadow: 0 3px 10px rgba(0,0,0,.32);
     }
+    .media-preview-thumb-remove:active { transform: scale(.92); }
+    .media-preview-thumb.video-thumb::after {
+      content:'\f04b'; font-family:'Font Awesome 6 Free'; font-weight:900;
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.62); color:#fff; font-size:.7rem; pointer-events:none; z-index:2;
+    }
+    .media-preview-count {
+      align-self:center; flex:0 0 auto; padding:7px 9px; border-radius:9px;
+      background:rgba(96,165,250,.10); border:1px solid rgba(96,165,250,.20);
+      color:#93c5fd; font-size:.72rem; font-weight:700;
+    }
+
+    .btn-remove-img { display: none; }
 
     textarea {
       background: transparent;
@@ -813,10 +905,17 @@ body {
     }
 
     .model-selector-button:hover,
-    .model-selector-button.active {
-      color: #fff;
-      border-color: #6366f1;
-      background: rgba(99, 102, 241, 0.1);
+    .model-selector-button.active,
+    .model-selector-button.has-selection {
+      color: #60a5fa;
+      border-color: rgba(96,165,250,.65);
+      background: rgba(59,130,246,.10);
+      box-shadow: 0 0 0 1px rgba(96,165,250,.08), 0 0 16px rgba(59,130,246,.10);
+    }
+
+    .model-selector-button.has-selection .model-selector-name {
+      color: #60a5fa;
+      font-weight: 700;
     }
 
     .model-selector-name {
@@ -1017,9 +1116,20 @@ body {
       line-height: 1.3;
     }
 
-    .model-option.selected .model-option-title {
-      color: #fff;
+    .model-option.selected {
+      background: rgba(59, 130, 246, 0.12);
+      border-left: 2px solid #60a5fa;
+      padding-left: 14px;
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.08);
     }
+
+    .model-option.selected .model-option-title {
+      color: #60a5fa;
+      font-weight: 700;
+    }
+
+    .model-option.selected .model-option-title > span:first-child { color: #60a5fa; }
+    .model-option.selected .model-option-description { color: #bfdbfe; }
 
     .model-option-description {
       color: var(--text-muted);
@@ -1797,6 +1907,7 @@ body {
   font-size: 18px;
   line-height: 20px;
 }
+
     .model-badge.free-badge {
     background: rgba(16, 185, 129, 0.15); /* Warna hijau transparan */
     color: #10b981; /* Teks hijau terang */
@@ -1834,6 +1945,18 @@ body {
       <i class="fa-regular fa-copy"></i>
       <span id="bubbleCopyLabel">Salin</span>
     </button>
+  </div>
+
+  <!-- CUSTOM WARNING MODAL -->
+  <div class="warning-modal-overlay" id="warningModalOverlay">
+    <div class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="warningModalTitle">
+      <div class="warning-modal-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div class="warning-modal-main">
+        <h3 id="warningModalTitle">Peringatan</h3>
+        <p id="warningModalMessage"></p>
+      </div>
+      <button type="button" class="warning-modal-btn" onclick="closeWarningModal()">Mengerti</button>
+    </div>
   </div>
 
   <div class="app-container">
@@ -1912,9 +2035,7 @@ body {
         <div class="input-box">
 
           <div class="image-preview-wrapper" id="imagePreviewWrapper">
-            <img id="imagePreview" src="" alt="Preview">
-            <video id="videoPreview" src="" controls muted playsinline preload="metadata"></video>
-            <button class="btn-remove-img" onclick="clearImage()">✕</button>
+            <div class="media-preview-list" id="mediaPreviewList"></div>
           </div>
 
           <textarea
@@ -2248,80 +2369,7 @@ body {
 
   <script>
 let viewingOtherModels = false;
-    
-async function handleGeneralFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
 
-    // Jika file yang dipilih dari menu "File" adalah gambar, tampilkan preview-nya
-    if (file.type.startsWith('image/')) {
-        try {
-            base64ImageData = await compressImageFile(file);
-            document.getElementById('imagePreview').src = base64ImageData;
-            document.getElementById('imagePreviewWrapper').style.display = 'block';
-        } catch (error) {
-            alert('Gagal memproses gambar, coba foto lain.');
-        }
-    } else {
-        // Jika yang dipilih bukan gambar (misal PDF atau Word)
-        alert('Saat ini hanya file gambar yang didukung untuk preview.');
-    }
-    
-    // Reset input agar bisa memilih file yang sama berulang kali
-    event.target.value = '';
-}
-    document.getElementById('imageInput').click();
-    function removeSelectedImage() {
-  selectedFile = null;
-  base64ImageData = null;
-
-  const preview = document.getElementById('imagePreview');
-  const img = document.getElementById('previewImage');
-
-  img.src = '';
-  preview.style.display = 'none';
-}
-    function handleImageSelect(event) {
-  const file = event.target.files[0];
-
-  if (!file) return;
-
-  if (!currentUser) {
-    event.target.value = '';
-    openAuthSheet('login');
-    return;
-  }
-
-  // Pastikan yang dipilih memang gambar
-  if (!file.type.startsWith('image/')) {
-    event.target.value = '';
-    return;
-  }
-
-  selectedFile = file;
-
-  const reader = new FileReader();
-
-  reader.onload = function(e) {
-    const preview = document.getElementById('imagePreview');
-    const img = document.getElementById('previewImage');
-
-    img.src = e.target.result;
-    preview.style.display = 'inline-block';
-
-    // Simpan Base64 untuk dikirim ke AI
-    base64ImageData = e.target.result.split(',')[1];
-  };
-
-  reader.readAsDataURL(file);
-
-  // Jangan masukkan nama file ke textarea
-  document.getElementById('promptInput').value = '';
-  document.getElementById('promptInput').focus();
-
-  // Bisa pilih foto yang sama lagi
-  event.target.value = '';
-}
   // Tahan welcome + animasi ketik sampai intro selesai.
   let introFinished = false;
   let resolveIntroFinished;
@@ -2372,7 +2420,8 @@ async function handleGeneralFileSelect(event) {
     let activeModels = [];
     let currentSelectedModel = null;
     let currentChatMessages = [];
-    let base64ImageData = null;
+    let base64ImageData = null; // kompatibilitas: media utama/pertama
+    let selectedImages = [];
     let selectedMediaKind = null; // image | video
     let selectedMediaMime = null;
     let abortController = null;
@@ -2636,6 +2685,21 @@ async function handleGeneralFileSelect(event) {
       if (button) button.classList.remove('active');
     }
 
+    function showWarningModal(message, title = 'Peringatan') {
+      const overlay = document.getElementById('warningModalOverlay');
+      const titleEl = document.getElementById('warningModalTitle');
+      const messageEl = document.getElementById('warningModalMessage');
+      if (!overlay || !titleEl || !messageEl) return;
+      titleEl.textContent = title;
+      messageEl.textContent = message;
+      overlay.classList.add('show');
+    }
+
+    function closeWarningModal() {
+      const overlay = document.getElementById('warningModalOverlay');
+      if (overlay) overlay.classList.remove('show');
+    }
+
     function showPremiumLockedInfo() {
       if (!currentUser) {
         const modelSheet = document.getElementById('modelBottomSheet');
@@ -2665,7 +2729,7 @@ async function handleGeneralFileSelect(event) {
         }, 360);
         return;
       }
-      alert('Model ini khusus akun Premium. Hubungi admin untuk upgrade akunmu ke Premium.');
+      showWarningModal('Model ini khusus akun Premium. Silakan upgrade akunmu terlebih dahulu untuk menggunakan model tersebut.', 'Model Premium');
     }
     // ===== AKHIR AKUN / LOGIN & AKSES PREMIUM =====
 
@@ -2707,8 +2771,9 @@ async function handleGeneralFileSelect(event) {
     function dropOldestStoredImage() {
       const sorted = [...chatSessions].sort((a, b) => a.updatedAt - b.updatedAt);
       for (const session of sorted) {
-        const target = session.messages.find(m => m.image);
+        const target = session.messages.find(m => (Array.isArray(m.images) && m.images.length) || m.image);
         if (target) {
+          target.images = [];
           target.image = null;
           return true;
         }
@@ -2798,7 +2863,13 @@ async function handleGeneralFileSelect(event) {
       const container = document.getElementById('messagesContainer');
       container.innerHTML = '';
       currentChatMessages.forEach(msg => {
-        appendMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.text, msg.image || msg.video || null, false, msg.mediaKind || (msg.video ? 'video' : (msg.image ? 'image' : null)));
+        appendMessage(
+          msg.role === 'assistant' ? 'ai' : 'user',
+          msg.text,
+          Array.isArray(msg.images) && msg.images.length ? msg.images : (msg.image || msg.video || null),
+          false,
+          msg.video ? 'video' : (msg.images?.length || msg.image ? 'image' : null)
+        );
       });
 
       clearImage();
@@ -2856,7 +2927,7 @@ async function handleGeneralFileSelect(event) {
           .from('ai_models')
           .select('*')
           .eq('enabled', true)
-          .order('created_at', { ascending: true });
+          .order('created_at', { ascending: false });
 
         if (error) {
           activeModels = [];
@@ -2874,13 +2945,16 @@ async function handleGeneralFileSelect(event) {
           return;
         }
 
-        activeModels = data;
+        // Simpan urutan asli dari Admin Control, tetapi tampilan akan diurutkan
+        // berdasarkan model terbaru (created_at). Model utama "Pretvfx" selalu paling bawah.
+        activeModels = data.map((model, index) => ({ ...model, __adminOrder: index }));
         const previousId = currentSelectedModel?.id;
         let restoredModel = activeModels.find(model => String(model.id) === String(previousId));
         if (restoredModel && isModelLocked(restoredModel)) restoredModel = null;
-        currentSelectedModel = restoredModel
-          || activeModels.find(model => !isModelLocked(model))
-          || activeModels[0];
+                currentSelectedModel = restoredModel
+          || [...activeModels].reverse().find(model => !isModelLocked(model))
+          || activeModels[activeModels.length - 1];
+
 
         renderModelSelector();
         renderModelList();
@@ -2901,34 +2975,68 @@ async function handleGeneralFileSelect(event) {
     }
 
     function getModelBadge(model) {
-      return String(model?.badge || model?.plan || model?.tier || '').trim();
+      const raw = String(model?.badge || model?.plan || model?.tier || '').trim();
+      if (!raw) return '';
+      return raw
+        .split(/[,|•·/]+/)
+        .map(part => part.trim())
+        .filter(part => part && !/^vision$/i.test(part))
+        .join(' • ');
     }
 
     function renderModelSelector() {
       const nameElement = document.getElementById('modelSelectorName');
+      const selectorButton = document.getElementById('modelSelectorButton');
       if (!currentSelectedModel) {
         nameElement.textContent = 'Pilih model';
+        selectorButton?.classList.remove('has-selection');
         return;
       }
       nameElement.textContent = getModelName(currentSelectedModel);
+      selectorButton?.classList.add('has-selection');
     }
 
     function renderModelList() {
-    const listElement = document.getElementById('modelList');
-    
-    // Filter model berdasarkan apakah sedang melihat menu "Model lainnya" atau "Utama"
-    const modelsToShow = activeModels.filter(model => {
-        if (viewingOtherModels) return model.category === 'other';
-        return !model.category || model.category === 'regular';
-    });
+      const listElement = document.getElementById('modelList');
 
-    if (!modelsToShow.length) {
+      // Filter kategori.
+      // Urutan: PREMIUM terbaru -> PREMIUM lama -> FREE terbaru -> FREE lama.
+      // Model utama "Pretvfx" selalu dipaksa ke posisi PALING BAWAH.
+      const modelsToShow = activeModels
+        .filter(model => {
+          if (viewingOtherModels) return model.category === 'other';
+          return !model.category || model.category === 'regular';
+        })
+        .sort((a, b) => {
+          const nameA = getModelName(a).trim().toLowerCase();
+          const nameB = getModelName(b).trim().toLowerCase();
+          const isPretvfxA = nameA === 'pretvfx' || nameA === 'pretvfx-ai';
+          const isPretvfxB = nameB === 'pretvfx' || nameB === 'pretvfx-ai';
+
+          // Pretvfx selalu paling bawah.
+          if (isPretvfxA !== isPretvfxB) return isPretvfxA ? 1 : -1;
+          if (isPretvfxA && isPretvfxB) return 0;
+
+          const premiumA = !!a.is_premium;
+          const premiumB = !!b.is_premium;
+          if (premiumA !== premiumB) return premiumA ? -1 : 1;
+
+          // Model yang terakhir dibuat tampil paling atas.
+          const timeA = Date.parse(a.created_at || '') || 0;
+          const timeB = Date.parse(b.created_at || '') || 0;
+          if (timeA !== timeB) return timeB - timeA;
+
+          // Fallback jika created_at sama/tidak ada.
+          return (a.__adminOrder ?? 0) - (b.__adminOrder ?? 0);
+        });
+
+      if (!modelsToShow.length) {
         listElement.innerHTML = '<div class="model-empty">Tidak ada model di kategori ini.</div>';
         return;
-    }
+      }
 
-    listElement.innerHTML = '';
-    modelsToShow.forEach(model => {
+      listElement.innerHTML = '';
+      modelsToShow.forEach(model => {
         const locked = isModelLocked(model);
         const button = document.createElement('button');
         button.type = 'button';
@@ -2938,23 +3046,23 @@ async function handleGeneralFileSelect(event) {
         const badge = getModelBadge(model);
 
         button.innerHTML = `
-        <div class="model-option-main">
-          <div class="model-option-title">
-            <span>${escapeHtml(getModelName(model))}</span>
-            ${model.is_premium 
-                ? '<span class="model-badge premium-badge"><i class="fa-solid fa-crown"></i> Premium</span>' 
+          <div class="model-option-main">
+            <div class="model-option-title">
+              <span>${escapeHtml(getModelName(model))}</span>
+              ${model.is_premium
+                ? '<span class="model-badge premium-badge"><i class="fa-solid fa-crown"></i> Premium</span>'
                 : '<span class="model-badge free-badge">Free</span>'
-            }
-            ${badge ? `<span class="model-badge">${escapeHtml(badge)}</span>` : ''}
+              }
+              ${badge ? `<span class="model-badge">${escapeHtml(badge)}</span>` : ''}
+            </div>
+            <div class="model-option-description">${escapeHtml(getModelDescription(model))}</div>
           </div>
-          <div class="model-option-description">${escapeHtml(getModelDescription(model))}</div>
-        </div>
-        ${locked
-          ? '<i class="fa-solid fa-lock model-lock-icon"></i>'
-          : `<svg class="model-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="5 12 10 17 20 7"></polyline>
-            </svg>`
-        }
+          ${locked
+            ? '<i class="fa-solid fa-lock model-lock-icon"></i>'
+            : `<svg class="model-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="5 12 10 17 20 7"></polyline>
+              </svg>`
+          }
         `;
 
         button.addEventListener('click', () => {
@@ -2965,9 +3073,8 @@ async function handleGeneralFileSelect(event) {
           selectModel(model);
         });
         listElement.appendChild(button);
-    });
-}
-
+      });
+    }
 
     function selectModel(model) {
       if (!model) return;
@@ -3209,53 +3316,133 @@ function startLoopTyping() {
       });
     }
 
-    function setMediaPreview(dataUrl, kind) {
+    function renderMediaPreview() {
       const wrapper = document.getElementById('imagePreviewWrapper');
-      const img = document.getElementById('imagePreview');
-      const video = document.getElementById('videoPreview');
+      const list = document.getElementById('mediaPreviewList');
+      if (!wrapper || !list) return;
 
-      img.classList.remove('active');
-      video.classList.remove('active');
-      img.src = '';
-      video.src = '';
+      list.innerHTML = '';
 
-      if (kind === 'video') {
-        video.src = dataUrl;
-        video.classList.add('active');
-      } else {
-        img.src = dataUrl;
-        img.classList.add('active');
+      if (selectedImages.length) {
+        const src = selectedImages[0];
+        const item = document.createElement('div');
+        item.className = 'media-preview-thumb';
+        item.innerHTML = `
+          <img src="${escapeHtml(src)}" alt="Foto" class="media-preview-thumb-media">
+          <button type="button" class="media-preview-thumb-remove" aria-label="Hapus foto" title="Hapus foto">✕</button>
+        `;
+        item.querySelector('.media-preview-thumb-remove').addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          clearImage();
+        });
+        list.appendChild(item);
+        wrapper.style.display = 'block';
+        return;
       }
 
-      wrapper.style.display = 'block';
+      if (selectedMediaKind === 'video' && base64ImageData) {
+        const item = document.createElement('div');
+        item.className = 'media-preview-thumb video-thumb';
+        item.innerHTML = `
+          <video src="${escapeHtml(base64ImageData)}" muted playsinline preload="auto" class="media-preview-thumb-media"></video>
+          <button type="button" class="media-preview-thumb-remove" aria-label="Hapus video" title="Hapus video">✕</button>
+        `;
+
+        const video = item.querySelector('video');
+        const removeBtn = item.querySelector('.media-preview-thumb-remove');
+        removeBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          clearImage();
+        });
+
+        // Paksa browser/WebView memuat frame pertama supaya thumbnail video tidak blank.
+        video.addEventListener('loadeddata', () => {
+          try {
+            video.currentTime = Math.min(0.1, Math.max(0, (video.duration || 0) / 2));
+          } catch (_) {}
+        }, { once: true });
+
+        video.addEventListener('seeked', () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const vw = video.videoWidth || 320;
+            const vh = video.videoHeight || 180;
+            const max = 480;
+            const scale = Math.min(1, max / Math.max(vw, vh));
+            canvas.width = Math.max(1, Math.round(vw * scale));
+            canvas.height = Math.max(1, Math.round(vh * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const img = document.createElement('img');
+            img.src = canvas.toDataURL('image/jpeg', 0.82);
+            img.alt = 'Preview video';
+            img.className = 'media-preview-thumb-media';
+            video.replaceWith(img);
+          } catch (_) {
+            // Jika WebView tidak mengizinkan capture frame, video tetap ditampilkan.
+          }
+        }, { once: true });
+
+        video.addEventListener('error', () => {
+          // Jangan hapus preview; video tetap menjadi fallback jika thumbnail gagal.
+        }, { once: true });
+
+        list.appendChild(item);
+        wrapper.style.display = 'block';
+        // load() penting pada beberapa Android WebView agar metadata/frame langsung diproses.
+        try { video.load(); } catch (_) {}
+        return;
+      }
+
+      wrapper.style.display = 'none';
+    }
+
+    function setMediaPreview(dataUrl, kind) {
+      if (kind === 'video') {
+        selectedImages = [];
+        base64ImageData = dataUrl;
+        selectedMediaKind = 'video';
+      } else {
+        if (!selectedImages.length && dataUrl) selectedImages = [dataUrl];
+        base64ImageData = selectedImages[0] || null;
+        selectedMediaKind = selectedImages.length ? 'image' : null;
+      }
+      renderMediaPreview();
     }
 
     async function handleImageSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+      const input = event.target;
+      const file = Array.from(input.files || []).find(f => f.type.startsWith('image/'));
+      if (!file) { input.value = ''; return; }
 
       if (!currentUser) {
-        event.target.value = '';
+        input.value = '';
         openAuthSheet('login');
         return;
       }
 
-      if (!file.type.startsWith('image/')) {
-        alert('File yang dipilih bukan gambar.');
-        event.target.value = '';
+      if (!currentSelectedModel || !currentSelectedModel.supports_vision) {
+        input.value = '';
+        showWarningModal('Model ini belum mendukung melihat foto. Silakan pilih model lain yang mendukung Vision terlebih dahulu.', 'Vision Belum Didukung');
         return;
       }
 
       try {
-        base64ImageData = await compressImageFile(file);
+        // Satu pesan = satu foto. Foto baru menggantikan foto lama.
+        const compressed = await compressImageFile(file);
+        selectedImages = [compressed];
+        base64ImageData = compressed;
         selectedMediaKind = 'image';
         selectedMediaMime = 'image/jpeg';
-        setMediaPreview(base64ImageData, 'image');
-        document.getElementById('promptInput').focus();
+        renderMediaPreview();
+        const prompt = document.getElementById('promptInput');
+        if (prompt) prompt.focus();
       } catch (error) {
-        alert('Gagal memproses gambar, coba foto lain.');
+        showWarningModal('Gagal memproses foto. Coba pilih foto lain.', 'Upload Foto Gagal');
       } finally {
-        event.target.value = '';
+        input.value = '';
       }
     }
 
@@ -3265,21 +3452,25 @@ function startLoopTyping() {
 
       if (!currentUser) {
         event.target.value = '';
-        toggleBottomSheet();
         openAuthSheet('login');
         return;
       }
 
+      if (!currentSelectedModel || !currentSelectedModel.supports_vision) {
+        event.target.value = '';
+        showWarningModal('Model ini belum mendukung melihat video. Silakan pilih model lain yang mendukung Vision terlebih dahulu.', 'Vision Belum Didukung');
+        return;
+      }
+
       if (!file.type.startsWith('video/')) {
-        alert('File yang dipilih bukan video.');
+        showWarningModal('File yang dipilih bukan video.', 'Format Tidak Didukung');
         event.target.value = '';
         return;
       }
 
-      // Inline video dikirim sebagai Base64. Batasi agar request browser tidak terlalu besar.
       const maxVideoSize = 20 * 1024 * 1024;
       if (file.size > maxVideoSize) {
-        alert('Video terlalu besar. Untuk upload langsung dari browser, gunakan video maksimal 20 MB.');
+        showWarningModal('Video terlalu besar. Untuk upload langsung dari browser, gunakan video maksimal 20 MB.', 'Video Terlalu Besar');
         event.target.value = '';
         return;
       }
@@ -3292,28 +3483,32 @@ function startLoopTyping() {
           reader.readAsDataURL(file);
         });
 
+        selectedImages = [];
         base64ImageData = dataUrl;
         selectedMediaKind = 'video';
         selectedMediaMime = file.type;
-        setMediaPreview(dataUrl, 'video');
+        renderMediaPreview();
         document.getElementById('promptInput').focus();
       } catch (error) {
-        alert('Gagal membaca video, coba video lain.');
+        showWarningModal('Gagal membaca video. Coba video lain.', 'Upload Video Gagal');
       } finally {
         event.target.value = '';
       }
     }
 
     async function handleGeneralFileSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+      const files = Array.from(event.target.files || []);
+      if (!files.length) return;
 
-      if (file.type.startsWith('image/')) {
-        await handleImageSelect({ target: { files: [file], value: '' } });
-      } else if (file.type.startsWith('video/')) {
-        await handleVideoSelect({ target: { files: [file], value: '' } });
+      const imageFiles = files.filter(f => f.type.startsWith('image/'));
+      const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+      if (imageFiles.length) {
+        await handleImageSelect({ target: { files: imageFiles, value: '' } });
+      } else if (videoFiles.length) {
+        await handleVideoSelect({ target: { files: [videoFiles[0]], value: '' } });
       } else {
-        alert('Untuk saat ini, File yang dikirim ke AI hanya mendukung gambar dan video.');
+        showWarningModal('Untuk saat ini, file yang dapat dikirim ke AI adalah gambar dan video.', 'File Tidak Didukung');
       }
 
       event.target.value = '';
@@ -3321,169 +3516,108 @@ function startLoopTyping() {
 
     function clearImage() {
       base64ImageData = null;
+      selectedImages = [];
       selectedMediaKind = null;
       selectedMediaMime = null;
 
-      const img = document.getElementById('imagePreview');
-      const video = document.getElementById('videoPreview');
       const wrapper = document.getElementById('imagePreviewWrapper');
+      const list = document.getElementById('mediaPreviewList');
+      if (list) list.innerHTML = '';
+      if (wrapper) wrapper.style.display = 'none';
 
-      img.src = '';
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-      img.classList.remove('active');
-      video.classList.remove('active');
-      wrapper.style.display = 'none';
+      ['imageInput','cameraInput','fileInput','videoInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    }
 
-      document.getElementById('imageInput').value = '';
-      document.getElementById('cameraInput').value = '';
-      document.getElementById('fileInput').value = '';
-      document.getElementById('videoInput').value = '';
+    function mediaVisionAllowed(kind) {
+      if (!currentSelectedModel || !currentSelectedModel.supports_vision) {
+        showWarningModal(
+          kind === 'video'
+            ? 'Model ini belum mendukung melihat video. Silakan pilih model yang mendukung Vision terlebih dahulu.'
+            : 'Model ini belum mendukung melihat foto. Silakan pilih model yang mendukung Vision terlebih dahulu.',
+          'Vision Belum Didukung'
+        );
+        return false;
+      }
+      return true;
     }
 
     function openFilePicker() {
-      if (!currentUser) {
-        toggleBottomSheet();
-        openAuthSheet('login');
-        return;
-      }
-
-      toggleBottomSheet();
-
-      setTimeout(() => {
-        document.getElementById('fileInput').click();
-      }, 250);
+      if (!currentUser) { openAuthSheet('login'); return; }
+      if (!mediaVisionAllowed('image')) return;
+      closeAllInputSheets();
+      document.getElementById('fileInput')?.click();
     }
 
     function openVideoPicker() {
-      if (!currentUser) {
-        toggleBottomSheet();
-        openAuthSheet('login');
-        return;
-      }
-
-      toggleBottomSheet();
-
-      setTimeout(() => {
-        document.getElementById('videoInput').click();
-      }, 250);
+      if (!currentUser) { openAuthSheet('login'); return; }
+      if (!mediaVisionAllowed('video')) return;
+      closeAllInputSheets();
+      document.getElementById('videoInput')?.click();
     }
 
     function openPhotoPicker() {
-      if (!currentUser) {
-        toggleBottomSheet();
-        openAuthSheet('login');
-        return;
-      }
-
-      toggleBottomSheet();
-      setTimeout(() => {
-        document.getElementById('imageInput').click();
-      }, 250);
+      if (!currentUser) { openAuthSheet('login'); return; }
+      if (!mediaVisionAllowed('image')) return;
+      closeAllInputSheets();
+      document.getElementById('imageInput')?.click();
     }
 
-    function openFilePicker() {
-  if (!currentUser) {
-    toggleBottomSheet();
-    openAuthSheet('login');
-    return;
-  }
-
-  toggleBottomSheet();
-
-  setTimeout(() => {
-    document.getElementById('fileInput').click();
-  }, 250);
-}
-    function openPhotoPicker() {
-    // Cek apakah user belum login
-    if (!currentUser) {
-        toggleBottomSheet(); // Tutup menu opsi
-        openAuthSheet('login'); // Tampilkan form login
-        return; // Hentikan proses
+    function openCamera() {
+      if (!currentUser) { openAuthSheet('login'); return; }
+      if (!mediaVisionAllowed('image')) return;
+      closeAllInputSheets();
+      document.getElementById('cameraInput')?.click();
     }
-    
-    // Jika sudah login, tutup menu dan buka galeri
-    toggleBottomSheet();
-    setTimeout(() => { 
-        document.getElementById('imageInput').click(); 
-    }, 250);
-}
-// Fungsi pembuka picker file dari bottom sheet
-function openPhotoPicker() {
-  document.getElementById('imageInput').click();
-  toggleBottomSheet();
-}
 
-function openCamera() {
-  document.getElementById('cameraInput').click();
-  toggleBottomSheet();
-}
-
-function openVideoPicker() {
-  document.getElementById('videoInput').click();
-  toggleBottomSheet();
-}
-
-function openFilePicker() {
-  document.getElementById('fileInput').click();
-  toggleBottomSheet();
-}
-
-// Fungsi untuk me-reset/menghapus gambar yang dipilih
-function clearImage() {
-  base64ImageData = null;
-  selectedMediaKind = null;
-  selectedMediaMime = null;
-  
-  const wrapper = document.getElementById('imagePreviewWrapper');
-  const img = document.getElementById('imagePreview');
-  const video = document.getElementById('videoPreview');
-  
-  if (img) {
-    img.src = '';
-    img.classList.remove('active');
-  }
-  if (video) {
-    video.src = '';
-    video.classList.remove('active');
-  }
-  if (wrapper) wrapper.style.display = 'none';
-}
+    function closeAllInputSheets() {
+      const sheet = document.getElementById('bottomSheet');
+      const overlay = document.getElementById('sheetOverlay');
+      if (sheet) sheet.classList.remove('open');
+      if (overlay) overlay.classList.remove('active');
+    }
 
     async function sendMessage() {
       const input = document.getElementById('promptInput');
       const text = input.value.trim();
       const container = document.getElementById('messagesContainer');
+      const hasImage = selectedImages.length > 0;
+      const hasVideo = selectedMediaKind === 'video' && !!base64ImageData;
 
-      if (!text && !base64ImageData) return;
+      if (!text && !hasImage && !hasVideo) return;
       if (!currentSelectedModel) {
-        alert('Model belum tersedia.');
+        showWarningModal('Belum ada model AI yang tersedia.', 'Model Belum Tersedia');
         return;
       }
       if (isModelLocked(currentSelectedModel)) {
         showPremiumLockedInfo();
         return;
       }
-
-      if (selectedMediaKind === 'video' && String(currentSelectedModel.provider).toLowerCase() !== 'gemini') {
-        alert('Upload video saat ini hanya didukung untuk model Glux QSL.');
+      if ((hasImage || hasVideo) && !currentSelectedModel.supports_vision) {
+        showWarningModal('Model ini belum mendukung fitur Vision, jadi belum bisa melihat atau membaca foto/video yang kamu kirim. Silakan pilih model lain yang mendukung Vision.', 'Vision Belum Didukung');
+        return;
+      }
+      if (hasVideo && String(currentSelectedModel.provider).toLowerCase() !== 'gemini') {
+        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Gunakan model Gemini yang mendukung Vision untuk mengirim video.', 'Video Tidak Didukung');
         return;
       }
 
       if (container.querySelector('.welcome-screen')) container.innerHTML = '';
 
-      const sentMedia = base64ImageData;
-      const sentMediaKind = selectedMediaKind;
-      const sentMediaMime = selectedMediaMime;
+      const sentImages = hasImage ? [...selectedImages] : [];
+      const sentMedia = hasVideo ? base64ImageData : (sentImages[0] || null);
+      const sentMediaKind = hasVideo ? 'video' : (hasImage ? 'image' : null);
+      const sentMediaMime = hasVideo ? selectedMediaMime : 'image/jpeg';
 
-      appendMessage('user', text, sentMedia, false, sentMediaKind);
+      appendMessage('user', text, hasImage ? sentImages : sentMedia, false, sentMediaKind);
       currentChatMessages.push({
         role: 'user',
         text: text,
-        image: sentMediaKind === 'image' ? sentMedia : null,
-        video: sentMediaKind === 'video' ? sentMedia : null,
+        images: sentImages,
+        image: sentImages[0] || null,
+        video: hasVideo ? sentMedia : null,
         mediaKind: sentMediaKind,
         mediaMime: sentMediaMime
       });
@@ -3492,7 +3626,6 @@ function clearImage() {
       input.value = '';
       input.style.height = '';
       clearImage();
-
       setLoadingState(true);
       abortController = new AbortController();
       showThinking();
@@ -3500,19 +3633,16 @@ function clearImage() {
       try {
         let aiResponseText = '';
         if (String(currentSelectedModel.provider).toLowerCase() === 'gemini') {
-          aiResponseText = await callGemini(currentSelectedModel, text, sentMedia, sentMediaKind, sentMediaMime, abortController.signal);
+          aiResponseText = await callGemini(currentSelectedModel, text, hasVideo ? sentMedia : sentImages, sentMediaKind, sentMediaMime, abortController.signal);
         } else {
           aiResponseText = await callOpenAICompatible(currentSelectedModel, currentChatMessages, abortController.signal);
         }
-
         removeThinking();
         const shownText = await appendMessage('ai', aiResponseText, null, true);
         currentChatMessages.push({ role: 'assistant', text: shownText });
         persistCurrentChat();
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          appendMessage('ai', '❌ Error: ' + error.message);
-        }
+        if (error.name !== 'AbortError') appendMessage('ai', '❌ Error: ' + error.message);
       } finally {
         removeThinking();
         setLoadingState(false);
@@ -3524,82 +3654,55 @@ function clearImage() {
       const endpoint = modelConfig.endpoint.replace(/\/+$/, '');
       const modelId = modelConfig.model_id.replace(/^models\//, '').replace(/\/+$/, '');
       const url = `${endpoint}/${modelId}:generateContent?key=` + encodeURIComponent(modelConfig.api_key);
-
       const parts = [];
-      if (prompt) {
-        parts.push({ text: `${getResponseModeInstruction()}\n\nPertanyaan pengguna:\n${prompt}` });
-      }
+      if (prompt) parts.push({ text: `${getResponseModeInstruction()}\n\nPertanyaan pengguna:\n${prompt}` });
 
-      if (mediaData) {
-        const mimeMatch = mediaData.match(/^data:([^;]+);base64,/);
+      const mediaList = Array.isArray(mediaData) ? mediaData : (mediaData ? [mediaData] : []);
+      for (const item of mediaList) {
+        const mimeMatch = String(item).match(/^data:([^;]+);base64,/);
         const mimeType = mediaMime || (mimeMatch ? mimeMatch[1] : null);
-        const data = mediaData.includes(',') ? mediaData.split(',')[1] : mediaData;
-
+        const data = String(item).includes(',') ? String(item).split(',')[1] : item;
         if (!mimeType) throw new Error('MIME type media tidak ditemukan.');
-
-        parts.push({
-          inline_data: {
-            mime_type: mimeType,
-            data: data
-          }
-        });
+        parts.push({ inline_data: { mime_type: mimeType, data } });
       }
-
-      if (!parts.length) {
-        parts.push({ text: getResponseModeInstruction() });
-      }
+      if (!parts.length) parts.push({ text: getResponseModeInstruction() });
 
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: signal,
+        signal,
         body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }]
-          },
-          contents: [{ role: 'user', parts: parts }]
+          systemInstruction: { parts: [{ text: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
+          contents: [{ role: 'user', parts }]
         })
       });
-
       const json = await response.json();
       if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
-      return json?.candidates?.[0]?.content?.parts
-        ?.filter(p => typeof p.text === 'string')
-        ?.map(p => p.text)
-        ?.join('') || '';
+      return json?.candidates?.[0]?.content?.parts?.filter(p => typeof p.text === 'string')?.map(p => p.text)?.join('') || '';
     }
 
     async function callOpenAICompatible(modelConfig, history, signal) {
       const messages = [
-        {
-          role: 'system',
-          content: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.'
-        },
+        { role: 'system', content: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
         ...history.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
-        const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
-
-        if (msg.image) {
-          const content = [];
-          if (textContent) content.push({ type: 'text', text: textContent });
-          content.push({ type: 'image_url', image_url: { url: msg.image } });
-          return { role, content };
-        }
-
-        return { role, content: textContent };
-      })
+          const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
+          const images = Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []);
+          if (images.length) {
+            const content = [];
+            if (textContent) content.push({ type: 'text', text: textContent });
+            images.forEach(image => content.push({ type: 'image_url', image_url: { url: image } }));
+            return { role, content };
+          }
+          return { role, content: textContent };
+        })
       ];
-
       const response = await fetch(modelConfig.endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${modelConfig.api_key}`
-        },
-        signal: signal,
-        body: JSON.stringify({ model: modelConfig.model_id, messages: messages })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${modelConfig.api_key}` },
+        signal,
+        body: JSON.stringify({ model: modelConfig.model_id, messages })
       });
-
       const json = await response.json();
       if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
       return json?.choices?.[0]?.message?.content || '';
@@ -3610,55 +3713,35 @@ function clearImage() {
     function appendMessage(sender, text, media = null, animate = false, mediaKind = null) {
       const container = document.getElementById('messagesContainer');
       const msgDiv = document.createElement('div');
-
       const shouldAnimate = animate && sender === 'ai' && !!text;
       msgDiv.className = `message ${sender}${shouldAnimate ? ' is-typing' : ''}`;
 
       let mediaHtml = '';
-      if (media) {
+      if (Array.isArray(media)) {
+        mediaHtml = `<div class="message-media-grid">${media.map(src => `<img src="${escapeHtml(src)}" class="message-img" alt="Uploaded Image">`).join('')}</div>`;
+      } else if (media) {
         if (mediaKind === 'video') {
-          mediaHtml = `<video src="${escapeHtml(media)}" class="message-video" controls playsinline preload="metadata"></video>`;
+          mediaHtml = `<div class="message-video-wrap"><video src="${escapeHtml(media)}" class="message-video" playsinline preload="metadata"></video><span class="message-video-play"><i class="fa-solid fa-play"></i></span></div>`;
         } else {
           mediaHtml = `<img src="${escapeHtml(media)}" class="message-img" alt="Uploaded Image">`;
         }
       }
 
-      let parsedText = shouldAnimate
-        ? ''
-        : renderMessageHtml(text);
-
+      const parsedText = shouldAnimate ? '' : renderMessageHtml(text);
       msgDiv.innerHTML = `
         ${mediaHtml}
         <div class="message-content">${parsedText}</div>
-
         <div class="message-actions">
-          ${
-            sender === 'ai'
-              ? `
-                <button class="action-link" onclick="speakMessage(this)" title="Bacakan suara">
-                  <i class="fa-solid fa-volume-high"></i>
-                  <span>Suara</span>
-                </button>
-
-                <button class="action-link feedback-btn" onclick="giveFeedback(this, 'like')" title="Suka">
-                  <i class="fa-regular fa-thumbs-up"></i>
-                </button>
-
-                <button class="action-link feedback-btn" onclick="giveFeedback(this, 'dislike')" title="Tidak Suka">
-                  <i class="fa-regular fa-thumbs-down"></i>
-                </button>
-              `
-              : ''
-          }
+          ${sender === 'ai' ? `
+            <button class="action-link" onclick="speakMessage(this)" title="Bacakan suara"><i class="fa-solid fa-volume-high"></i><span>Suara</span></button>
+            <button class="action-link feedback-btn" onclick="giveFeedback(this, 'like')" title="Suka"><i class="fa-regular fa-thumbs-up"></i></button>
+            <button class="action-link feedback-btn" onclick="giveFeedback(this, 'dislike')" title="Tidak Suka"><i class="fa-regular fa-thumbs-down"></i></button>
+          ` : ''}
         </div>
       `;
-
       container.appendChild(msgDiv);
       container.scrollTop = container.scrollHeight;
-
-      if (shouldAnimate) {
-        return typeWriterEffect(msgDiv, text);
-      }
+      if (shouldAnimate) return typeWriterEffect(msgDiv, text);
       return Promise.resolve(text);
     }
 
@@ -3919,21 +4002,6 @@ function clearImage() {
       document.getElementById('btnSend').style.display = isLoading ? 'none' : 'flex';
       document.getElementById('btnStop').style.display = isLoading ? 'flex' : 'none';
     }
-
-    function openCamera() {
-  // Kamera hanya boleh digunakan setelah login
-  if (!currentUser) {
-    toggleBottomSheet();
-    openAuthSheet('login');
-    return;
-  }
-
-  toggleBottomSheet();
-
-  setTimeout(() => {
-    document.getElementById('cameraInput').click();
-  }, 250);
-}
 
     function showProjectInfo() { alert('Fitur proyek belum dikonfigurasi.'); }
     function showToolsInfo() { alert('Akses alat masih mengikuti konfigurasi Admin Control.'); }
