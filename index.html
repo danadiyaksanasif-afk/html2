@@ -635,13 +635,25 @@ textarea,
 
     .message-video {
       object-fit: contain;
+      width: 100%;
+      max-width: 360px;
+      height: auto;
+      max-height: 320px;
+      display: block;
     }
 
     .message-media-grid {
       display:flex; flex-wrap:wrap; gap:8px; max-width:100%; margin-bottom:6px;
     }
     .message-media-grid .message-img { margin-bottom:0; }
-    .message-video-wrap { position:relative; width:fit-content; max-width:360px; cursor:pointer; }
+    .message-video-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 360px;
+      overflow: hidden;
+      border-radius: 10px;
+      cursor: pointer;
+    }
     .message-video-wrap .message-video { margin-bottom:0; }
     .message-video-play {
       position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
@@ -2628,6 +2640,11 @@ let viewingOtherModels = false;
     let selectedImages = [];
     let selectedMediaKind = null; // image | video
     let selectedMediaMime = null;
+    // URL blob khusus tampilan video. Jangan masukkan base64 video raksasa
+    // langsung ke innerHTML karena Android WebView bisa membuat elemen melebar
+    // atau gagal dirender. Base64 tetap dipakai khusus untuk request Gemini.
+    let selectedVideoObjectUrl = null;
+    const activeVideoObjectUrls = new Set();
     let abortController = null;
 
     let responseMode = 'short';
@@ -3340,9 +3357,9 @@ let viewingOtherModels = false;
 
     function getResponseModeInstruction() {
       const creatorInstruction = `
-IDENTITAS APLIKASI: Kamu adalah AI yang digunakan.
+IDENTITAS APLIKASI: Kamu adalah AI yang digunakan di Pretvfx-AI.
 PEMBUAT APLIKASI: Zain Suryo Negoro.
-Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi AI dibuat oleh Zain Suryo Negoro.
+Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi Pretvfx-AI dibuat oleh Zain Suryo Negoro.
 Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google, OpenAI, Anthropic, atau penyedia model yang sedang digunakan.
 `;
 
@@ -3592,54 +3609,32 @@ function startLoopTyping() {
       if (selectedMediaKind === 'video' && base64ImageData) {
         const item = document.createElement('div');
         item.className = 'media-preview-thumb video-thumb';
-        item.innerHTML = `
-          <video src="${escapeHtml(base64ImageData)}" muted playsinline preload="auto" class="media-preview-thumb-media"></video>
-          <button type="button" class="media-preview-thumb-remove" aria-label="Hapus video" title="Hapus video">✕</button>
-        `;
 
-        const video = item.querySelector('video');
-        const removeBtn = item.querySelector('.media-preview-thumb-remove');
+        // JANGAN taruh base64 video ke innerHTML. Pakai Blob URL untuk preview.
+        const video = document.createElement('video');
+        video.className = 'media-preview-thumb-media';
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.setAttribute('aria-label', 'Preview video');
+        video.src = selectedVideoObjectUrl || base64ImageData;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'media-preview-thumb-remove';
+        removeBtn.setAttribute('aria-label', 'Hapus video');
+        removeBtn.title = 'Hapus video';
+        removeBtn.textContent = '✕';
         removeBtn.addEventListener('click', (event) => {
           event.preventDefault();
           event.stopPropagation();
           clearImage();
         });
 
-        // Paksa browser/WebView memuat frame pertama supaya thumbnail video tidak blank.
-        video.addEventListener('loadeddata', () => {
-          try {
-            video.currentTime = Math.min(0.1, Math.max(0, (video.duration || 0) / 2));
-          } catch (_) {}
-        }, { once: true });
-
-        video.addEventListener('seeked', () => {
-          try {
-            const canvas = document.createElement('canvas');
-            const vw = video.videoWidth || 320;
-            const vh = video.videoHeight || 180;
-            const max = 480;
-            const scale = Math.min(1, max / Math.max(vw, vh));
-            canvas.width = Math.max(1, Math.round(vw * scale));
-            canvas.height = Math.max(1, Math.round(vh * scale));
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const img = document.createElement('img');
-            img.src = canvas.toDataURL('image/jpeg', 0.82);
-            img.alt = 'Preview video';
-            img.className = 'media-preview-thumb-media';
-            video.replaceWith(img);
-          } catch (_) {
-            // Jika WebView tidak mengizinkan capture frame, video tetap ditampilkan.
-          }
-        }, { once: true });
-
-        video.addEventListener('error', () => {
-          // Jangan hapus preview; video tetap menjadi fallback jika thumbnail gagal.
-        }, { once: true });
-
+        item.appendChild(video);
+        item.appendChild(removeBtn);
         list.appendChild(item);
         wrapper.style.display = 'block';
-        // load() penting pada beberapa Android WebView agar metadata/frame langsung diproses.
         try { video.load(); } catch (_) {}
         return;
       }
@@ -3652,6 +3647,7 @@ function startLoopTyping() {
         selectedImages = [];
         base64ImageData = dataUrl;
         selectedMediaKind = 'video';
+        selectedMediaMime = (String(dataUrl).match(/^data:([^;]+);base64,/) || [])[1] || 'video/mp4';
       } else {
         if (!selectedImages.length && dataUrl) selectedImages = [dataUrl];
         base64ImageData = selectedImages[0] || null;
@@ -3734,7 +3730,20 @@ function startLoopTyping() {
         selectedImages = [];
         base64ImageData = dataUrl;
         selectedMediaKind = 'video';
-        selectedMediaMime = file.type;
+        selectedMediaMime = file.type || 'video/mp4';
+
+        // Blob URL hanya untuk pemutaran/preview lokal. Request AI tetap memakai base64.
+        try {
+          if (selectedVideoObjectUrl) {
+            URL.revokeObjectURL(selectedVideoObjectUrl);
+            activeVideoObjectUrls.delete(selectedVideoObjectUrl);
+          }
+          selectedVideoObjectUrl = URL.createObjectURL(file);
+          activeVideoObjectUrls.add(selectedVideoObjectUrl);
+        } catch (_) {
+          selectedVideoObjectUrl = null;
+        }
+
         renderMediaPreview();
         document.getElementById('promptInput').focus();
       } catch (error) {
@@ -3767,6 +3776,9 @@ function startLoopTyping() {
       selectedImages = [];
       selectedMediaKind = null;
       selectedMediaMime = null;
+      // selectedVideoObjectUrl sengaja dipertahankan karena setelah tombol Kirim
+      // URL yang sama masih dipakai oleh video di chat.
+      selectedVideoObjectUrl = null;
 
       const wrapper = document.getElementById('imagePreviewWrapper');
       const list = document.getElementById('mediaPreviewList');
@@ -3860,7 +3872,10 @@ function startLoopTyping() {
       const sentMediaKind = hasVideo ? 'video' : (hasImage ? 'image' : null);
       const sentMediaMime = hasVideo ? selectedMediaMime : 'image/jpeg';
 
-      appendMessage('user', text, hasImage ? sentImages : sentMedia, false, sentMediaKind);
+      const displayMedia = hasVideo
+        ? { url: selectedVideoObjectUrl || sentMedia, data: sentMedia }
+        : (hasImage ? sentImages : sentMedia);
+      appendMessage('user', text, displayMedia, false, sentMediaKind);
       currentChatMessages.push({
         role: 'user',
         text: text,
@@ -3921,7 +3936,7 @@ function startLoopTyping() {
         headers: { 'Content-Type': 'application/json' },
         signal,
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: 'Kamu adalah AI. AI ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
+          systemInstruction: { parts: [{ text: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
           contents: [{ role: 'user', parts }]
         })
       });
@@ -3932,7 +3947,7 @@ function startLoopTyping() {
 
     async function callOpenAICompatible(modelConfig, history, signal) {
       const messages = [
-        { role: 'system', content: 'Kamu adalah AI nya Zain Suryo Negoro. AI ini dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
+        { role: 'system', content: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
         ...history.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
           const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
@@ -3959,6 +3974,13 @@ function startLoopTyping() {
 
     let activeTypingStop = null;
 
+    window.addEventListener('beforeunload', () => {
+      activeVideoObjectUrls.forEach(url => {
+        try { URL.revokeObjectURL(url); } catch (_) {}
+      });
+      activeVideoObjectUrls.clear();
+    });
+
     function appendMessage(sender, text, media = null, animate = false, mediaKind = null) {
       const container = document.getElementById('messagesContainer');
       const msgDiv = document.createElement('div');
@@ -3966,11 +3988,15 @@ function startLoopTyping() {
       msgDiv.className = `message ${sender}${shouldAnimate ? ' is-typing' : ''}`;
 
       let mediaHtml = '';
+      let videoDisplayUrl = null;
       if (Array.isArray(media)) {
         mediaHtml = `<div class="message-media-grid">${media.map(src => `<img src="${escapeHtml(src)}" class="message-img" alt="Uploaded Image">`).join('')}</div>`;
       } else if (media) {
         if (mediaKind === 'video') {
-          mediaHtml = `<div class="message-video-wrap"><video src="${escapeHtml(media)}" class="message-video" playsinline preload="metadata"></video><span class="message-video-play"><i class="fa-solid fa-play"></i></span></div>`;
+          // Gunakan placeholder lalu buat <video> lewat DOM supaya base64 besar
+          // tidak pernah diproses sebagai atribut HTML oleh Android WebView.
+          videoDisplayUrl = (media && typeof media === 'object' && media.url) ? media.url : media;
+          mediaHtml = `<div class="message-video-wrap" data-video-placeholder="1"></div>`;
         } else {
           mediaHtml = `<img src="${escapeHtml(media)}" class="message-img" alt="Uploaded Image">`;
         }
@@ -3989,6 +4015,37 @@ function startLoopTyping() {
           ` : ''}
         </div>
       `;
+
+      if (mediaKind === 'video' && videoDisplayUrl) {
+        const wrap = msgDiv.querySelector('[data-video-placeholder]');
+        if (wrap) {
+          const video = document.createElement('video');
+          video.className = 'message-video';
+          video.controls = true;
+          video.playsInline = true;
+          video.preload = 'metadata';
+          video.src = videoDisplayUrl;
+
+          const play = document.createElement('span');
+          play.className = 'message-video-play';
+          play.innerHTML = '<i class="fa-solid fa-play"></i>';
+
+          video.addEventListener('loadedmetadata', () => {
+            // Pastikan ukuran mengikuti layar, bukan ukuran asli video.
+            video.style.maxWidth = '100%';
+          }, { once: true });
+          video.addEventListener('error', () => {
+            wrap.setAttribute('data-video-error', '1');
+          }, { once: true });
+          video.addEventListener('play', () => { play.style.display = 'none'; });
+          video.addEventListener('pause', () => { if (!video.ended) play.style.display = 'flex'; });
+          play.addEventListener('click', () => { video.play().catch(() => {}); });
+
+          wrap.appendChild(video);
+          wrap.appendChild(play);
+        }
+      }
+
       container.appendChild(msgDiv);
       container.scrollTop = container.scrollHeight;
       if (shouldAnimate) return typeWriterEffect(msgDiv, text);
