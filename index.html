@@ -96,6 +96,24 @@ body {
   background-image:
     radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
     radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 45%);
+  /* Matikan seleksi teks & popup "Salin/Bagikan" bawaan browser di seluruh
+     tampilan app (welcome screen, sidebar, menu model, dll). Elemen yang
+     memang perlu bisa dipilih/diketik (kolom chat, isi balasan) dikembalikan
+     lagi di aturan .selectable-text di bawah. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Kembalikan kemampuan pilih teks & ketik untuk bagian yang memang butuh,
+   biar gak ikut kena matiin bareng body di atas. */
+.message-content,
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 
@@ -1094,40 +1112,16 @@ body {
       letter-spacing: 0.3px;
     }
 
-    /* Bar equalizer di bawah, muncul & bergerak hanya saat AI sedang "berbicara" */
-    .voice-mode-wave {
+    .voice-mode-credit {
       position: absolute;
-      bottom: 150px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 5px;
-      height: 34px;
-      opacity: 0;
-      transition: opacity .25s ease;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.32);
+      letter-spacing: 0.4px;
       pointer-events: none;
-    }
-    .voice-mode-wave span {
-      width: 4px;
-      height: 8px;
-      border-radius: 3px;
-      background: var(--accent-gradient);
-    }
-    .voice-mode-overlay.speaking .voice-mode-wave {
-      opacity: 1;
-    }
-    .voice-mode-overlay.speaking .voice-mode-wave span {
-      animation: voiceWaveBar 0.9s ease-in-out infinite;
-    }
-    .voice-mode-wave span:nth-child(1) { animation-delay: 0s; }
-    .voice-mode-wave span:nth-child(2) { animation-delay: 0.12s; }
-    .voice-mode-wave span:nth-child(3) { animation-delay: 0.24s; }
-    .voice-mode-wave span:nth-child(4) { animation-delay: 0.36s; }
-    .voice-mode-wave span:nth-child(5) { animation-delay: 0.48s; }
-
-    @keyframes voiceWaveBar {
-      0%, 100% { height: 8px; }
-      50% { height: 32px; }
     }
 
     .voice-mode-controls {
@@ -2562,10 +2556,6 @@ body {
     </div>
     <div class="voice-mode-status" id="voiceModeStatus">Mendengarkan...</div>
 
-    <div class="voice-mode-wave" id="voiceModeWave" aria-hidden="true">
-      <span></span><span></span><span></span><span></span><span></span>
-    </div>
-
     <div class="voice-mode-controls">
       <button class="voice-mode-btn" id="voiceModeMuteBtn" onclick="toggleVoiceModeMute()" title="Bisukan mic">
         <i class="fa-solid fa-microphone"></i>
@@ -2574,6 +2564,8 @@ body {
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
+
+    <div class="voice-mode-credit">Modded by Zain Suryo Negoro</div>
   </div>
 
   <script>
@@ -3004,24 +2996,56 @@ let viewingOtherModels = false;
       return text.length > 40 ? text.slice(0, 40) + '...' : text;
     }
 
+    function trimChatSessions() {
+      const MAX_SESSIONS = 50; // batasi biar penyimpanan & render list gak makin berat lama-lama
+      if (chatSessions.length <= MAX_SESSIONS) return;
+      chatSessions.sort((a, b) => b.updatedAt - a.updatedAt);
+      chatSessions.length = MAX_SESSIONS;
+    }
+
+    // Video jangan ikut disimpan ke localStorage — ukurannya jauh lebih
+    // besar dari gambar dan bisa langsung bikin penyimpanan penuh.
+    // Video tetap tampil normal selama chat masih berjalan (di currentChatMessages),
+    // cuma pas disimpan ke riwayat, datanya dikosongin.
+    function toStorableMessages(messages) {
+      return messages.map(m => {
+        if (m.video) {
+          const copy = { ...m, video: null, videoOmitted: true };
+          return copy;
+        }
+        return m;
+      });
+    }
+
     function persistCurrentChat() {
       if (!currentChatId || currentChatMessages.length === 0) return;
+      const storableMessages = toStorableMessages(currentChatMessages);
       let session = chatSessions.find(s => s.id === currentChatId);
       if (session) {
-        session.messages = currentChatMessages;
+        session.messages = storableMessages;
         session.title = generateChatTitle(currentChatMessages);
         session.updatedAt = Date.now();
       } else {
         session = {
           id: currentChatId,
           title: generateChatTitle(currentChatMessages),
-          messages: currentChatMessages,
+          messages: storableMessages,
           updatedAt: Date.now()
         };
         chatSessions.unshift(session);
       }
+      trimChatSessions();
       saveChatSessions();
-      renderChatHistoryList();
+
+      // Render list riwayat cuma kalau sidebar-nya lagi kebuka; kalau lagi
+      // ketutup (paling sering, pas lagi chat), tandain dirty aja & baru
+      // di-render pas nanti sidebar dibuka (lihat toggleSidebar()).
+      historyListDirty = true;
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && sidebar.classList.contains('open')) {
+        renderChatHistoryList();
+        historyListDirty = false;
+      }
     }
 
     function formatRelativeTime(timestamp) {
@@ -3316,9 +3340,9 @@ let viewingOtherModels = false;
 
     function getResponseModeInstruction() {
       const creatorInstruction = `
-IDENTITAS APLIKASI: Kamu adalah AI yang digunakan di Pretvfx-AI.
+IDENTITAS APLIKASI: Kamu adalah AI yang digunakan.
 PEMBUAT APLIKASI: Zain Suryo Negoro.
-Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi Pretvfx-AI dibuat oleh Zain Suryo Negoro.
+Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi AI dibuat oleh Zain Suryo Negoro.
 Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google, OpenAI, Anthropic, atau penyedia model yang sedang digunakan.
 `;
 
@@ -3329,9 +3353,18 @@ Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google
     }
 
 
+    let historyListDirty = true; // biar render pertama kali tetap jalan
+
     function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('open');
-      document.getElementById('sidebarOverlay').classList.toggle('active');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const opening = !sidebar.classList.contains('open');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+      if (opening && historyListDirty) {
+        renderChatHistoryList();
+        historyListDirty = false;
+      }
     }
 
     function toggleBottomSheet() {
@@ -3888,7 +3921,7 @@ function startLoopTyping() {
         headers: { 'Content-Type': 'application/json' },
         signal,
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
+          systemInstruction: { parts: [{ text: 'Kamu adalah AI. AI ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
           contents: [{ role: 'user', parts }]
         })
       });
@@ -3899,7 +3932,7 @@ function startLoopTyping() {
 
     async function callOpenAICompatible(modelConfig, history, signal) {
       const messages = [
-        { role: 'system', content: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
+        { role: 'system', content: 'Kamu adalah AI nya Zain Suryo Negoro. AI ini dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
         ...history.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
           const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
@@ -4468,12 +4501,12 @@ function startLoopTyping() {
     function closeVoiceMode() {
       voiceModeActive = false;
       voiceModeSpeaking = false;
+      stopAllSpeech();
       const overlay = document.getElementById('voiceModeOverlay');
       if (overlay) overlay.classList.remove('show', 'listening', 'speaking');
       if (voiceModeRecognition) {
         try { voiceModeRecognition.onend = null; voiceModeRecognition.stop(); } catch (_) {}
       }
-      if ('speechSynthesis' in window) speechSynthesis.cancel();
     }
 
     function setVoiceModeStatus(text, mode) {
@@ -4554,6 +4587,13 @@ function startLoopTyping() {
     // ===== JEMBATAN KE TTS ANDROID ASLI (buat app WebView yang gak punya speechSynthesis) =====
     // App Android harus manggil: webview1.addJavascriptInterface(objekTTS, "AndroidTTS")
     // dan objeknya punya method @JavascriptInterface speak(String text).
+    let speechSessionId = 0;
+    let currentSpeakingButton = null;
+
+    function resetSpeakButtonLabel(button) {
+      if (button) button.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>Suara</span>';
+    }
+
     function nativeSpeak(text, onEnd) {
       if (window.AndroidTTS && typeof window.AndroidTTS.speak === 'function') {
         window.onNativeTTSEnd = function () {
@@ -4564,6 +4604,27 @@ function startLoopTyping() {
         return true;
       }
       return false;
+    }
+
+    function nativeStopSpeak() {
+      if (window.AndroidTTS && typeof window.AndroidTTS.stop === 'function') {
+        window.AndroidTTS.stop();
+        return true;
+      }
+      return false;
+    }
+
+    // Hentikan semua suara yang lagi jalan (native app TTS maupun speechSynthesis browser),
+    // dan pastikan tombol "Suara" yang lagi aktif kembali normal.
+    function stopAllSpeech() {
+      speechSessionId++;
+      window.onNativeTTSEnd = null;
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+      nativeStopSpeak();
+      if (currentSpeakingButton) {
+        resetSpeakButtonLabel(currentSpeakingButton);
+        currentSpeakingButton = null;
+      }
     }
 
     // Pecah teks jadi potongan per kalimat, biar speechSynthesis Chrome Android
@@ -4581,22 +4642,24 @@ function startLoopTyping() {
       if (!('speechSynthesis' in window)) return false;
 
       const voice = pickSmoothVoice();
-      const lang = voice ? voice.lang : 'id-ID';
       const chunks = splitIntoSpeechChunks(text);
       if (!chunks.length) { if (onEnd) onEnd(); return true; }
+
+      const mySession = speechSessionId;
       let index = 0;
 
       function speakNext() {
+        if (mySession !== speechSessionId) return; // sudah dihentikan dari luar (mis. tombol X)
         if (index >= chunks.length) { if (onEnd) onEnd(); return; }
         const speech = new SpeechSynthesisUtterance(chunks[index++]);
         if (voice) speech.voice = voice;
-speech.lang = 'id-ID';
-speech.rate = 1.20;
-speech.pitch = 1;
-speech.volume = 1;
-speech.onend = speakNext;
-speech.onerror = speakNext;
-speechSynthesis.speak(speech);
+        speech.lang = 'id-ID';
+        speech.rate = 1.20;
+        speech.pitch = 1;
+        speech.volume = 1;
+        speech.onend = speakNext;
+        speech.onerror = speakNext;
+        speechSynthesis.speak(speech);
       }
 
       if (speechSynthesis.speaking || speechSynthesis.pending) {
@@ -4611,6 +4674,7 @@ speechSynthesis.speak(speech);
     function speakInVoiceMode(text) {
       const clean = text.replace(/[*_#`>~]/g, '').replace(/\n{2,}/g, '. ');
 
+      stopAllSpeech();
       voiceModeSpeaking = true;
       setVoiceModeStatus('Berbicara...', 'speaking');
 
@@ -4652,15 +4716,26 @@ speechSynthesis.speak(speech);
       const content = button.closest('.message').querySelector('.message-content').innerText;
       if (!content) return;
 
+      // Tombol yang sama dipencet lagi pas lagi ngomong -> hentikan aja
+      if (currentSpeakingButton === button) {
+        stopAllSpeech();
+        return;
+      }
+
+      stopAllSpeech(); // matiin tombol lain yang mungkin masih ngomong
+
+      currentSpeakingButton = button;
       button.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>Berbicara...</span>';
-      const resetButton = () => {
-        button.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>Suara</span>';
+
+      const finish = () => {
+        resetSpeakButtonLabel(button);
+        if (currentSpeakingButton === button) currentSpeakingButton = null;
       };
 
-      if (nativeSpeak(content, resetButton)) return;
-      if (browserSpeak(content, resetButton)) return;
+      if (nativeSpeak(content, finish)) return;
+      if (browserSpeak(content, finish)) return;
 
-      resetButton();
+      finish();
       alert('Fitur suara tidak didukung perangkat ini.');
     }
 
