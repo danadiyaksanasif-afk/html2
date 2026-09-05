@@ -4590,13 +4590,15 @@ function startLoopTyping() {
         if (index >= chunks.length) { if (onEnd) onEnd(); return; }
         const speech = new SpeechSynthesisUtterance(chunks[index++]);
         if (voice) speech.voice = voice;
-speech.lang = lang;
-speech.rate = 0.90;
-speech.pitch = 0.94;
-speech.volume = 1.0;
+speech.lang = 'id-ID';
+speech.rate = 1.20;
+speech.pitch = 1;
+speech.volume = 1;
 speech.onend = speakNext;
 speech.onerror = speakNext;
 speechSynthesis.speak(speech);
+      }
+
       if (speechSynthesis.speaking || speechSynthesis.pending) {
         speechSynthesis.cancel();
         setTimeout(speakNext, 150);
