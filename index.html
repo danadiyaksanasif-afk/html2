@@ -3357,9 +3357,9 @@ let viewingOtherModels = false;
 
     function getResponseModeInstruction() {
       const creatorInstruction = `
-IDENTITAS APLIKASI: Kamu adalah AI yang digunakan di Pretvfx-AI.
+IDENTITAS APLIKASI: Kamu adalah AI yang digunakan.
 PEMBUAT APLIKASI: Zain Suryo Negoro.
-Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi Pretvfx-AI dibuat oleh Zain Suryo Negoro.
+Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi AI ini dibuat oleh Zain Suryo Negoro.
 Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google, OpenAI, Anthropic, atau penyedia model yang sedang digunakan.
 `;
 
@@ -3936,7 +3936,7 @@ function startLoopTyping() {
         headers: { 'Content-Type': 'application/json' },
         signal,
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
+          systemInstruction: { parts: [{ text: 'Kamu adalah AI yang dibuat oleh Zain Suryo Negoro. AI ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
           contents: [{ role: 'user', parts }]
         })
       });
@@ -3947,7 +3947,7 @@ function startLoopTyping() {
 
     async function callOpenAICompatible(modelConfig, history, signal) {
       const messages = [
-        { role: 'system', content: 'Kamu adalah AI di aplikasi Pretvfx-AI. Aplikasi ini dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
+        { role: 'system', content: 'Kamu adalah AI. AI yang telah dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
         ...history.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
           const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
