@@ -3407,8 +3407,9 @@ let viewingOtherModels = false;
     function getResponseModeInstruction() {
       const creatorInstruction = `
 IDENTITAS APLIKASI: Kamu adalah AI yang digunakan.
-PEMBUAT AI: Zain Suryo Negoro.
-Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa AI ini dibuat oleh Zain Suryo Negoro.
+PEMBUAT APLIKASI: Zain Suryo Negoro, seorang programmer/developer aplikasi.
+Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi AI ini dibuat oleh Zain Suryo Negoro.
+Kalau pengguna bertanya LEBIH LANJUT "siapa itu Zain Suryo Negoro" (bukan sekadar tanya siapa pembuat aplikasi), ceritakan pakai bahasamu sendiri secara natural bahwa dia seorang programmer/developer yang mengembangkan aplikasi dan AI ini — JANGAN cuma mengulang kalimat "AI ini dibuat oleh Zain Suryo Negoro" lagi, karena itu bukan jawaban yang pas buat pertanyaan "siapa dia".
 Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google, OpenAI, Anthropic, atau penyedia model yang sedang digunakan.
 `;
 
@@ -3772,7 +3773,7 @@ function startLoopTyping() {
         return;
       }
 
-      const maxVideoSize = 50 * 1024 * 1024;
+      const maxVideoSize = 20 * 1024 * 1024;
       if (file.size > maxVideoSize) {
         showWarningModal('Video terlalu besar. Untuk upload langsung dari browser, gunakan video maksimal 20 MB.', 'Video Terlalu Besar');
         event.target.value = '';
@@ -4033,7 +4034,7 @@ function startLoopTyping() {
           headers: { 'Content-Type': 'application/json' },
           signal,
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: 'Kamu adalah AI yang dibuat oleh Zain Suryo Negoro. AI ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat AI ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
+            systemInstruction: { parts: [{ text: 'Kamu adalah AI yang dibuat oleh Zain Suryo Negoro, seorang programmer/developer. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Kalau ditanya lebih lanjut siapa itu Zain Suryo Negoro, ceritakan pakai bahasamu sendiri kalau dia programmer/developer yang bikin aplikasi dan AI ini, jangan cuma mengulang "dibuat oleh Zain Suryo Negoro" lagi. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
             contents: [{ role: 'user', parts }]
           })
         });
@@ -4055,7 +4056,7 @@ function startLoopTyping() {
       // AI cuma diingatkan 3 obrolan (pesan kamu + balasan AI) paling akhir, sisanya "dilupakan".
       const trimmedHistory = trimHistoryToLastTurns(history, 3);
       const messages = [
-        { role: 'system', content: 'Kamu adalah AI. AI yang telah dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
+        { role: 'system', content: 'Kamu adalah AI yang telah dibuat oleh Zain Suryo Negoro, seorang programmer/developer. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Kalau ditanya lebih lanjut siapa itu Zain Suryo Negoro, ceritakan pakai bahasamu sendiri kalau dia programmer/developer yang bikin aplikasi dan AI ini, jangan cuma mengulang "dibuat oleh Zain Suryo Negoro" lagi. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
         ...trimmedHistory.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
           const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
@@ -4649,6 +4650,7 @@ function startLoopTyping() {
     let voiceModeMuted = false;
     let voiceModeSpeaking = false;
     let voiceModeRecognition = null;
+    let voiceModeBargeInRecognition = null;
 
     function openVoiceMode() {
       if (!getSpeechRecognitionAPI()) {
@@ -4697,13 +4699,16 @@ function startLoopTyping() {
 
       const rec = new SpeechRecognitionAPI();
       rec.lang = 'id-ID';
-      rec.continuous = false;
+      // continuous=true biar mic TETAP NYALA selama nunggu kamu ngomong, gak auto-berhenti
+      // tiap ada jeda diam beberapa detik (itu penyebab mic kerasa "nyala-mati" sebelumnya).
+      rec.continuous = true;
       rec.interimResults = false;
 
       let handled = false; // biar onend di bawah gak ikut restart dobel kalau onresult/onerror udah nanganin
 
       rec.onresult = (event) => {
         handled = true;
+        try { rec.stop(); } catch (_) {} // tutup sesi ini secara bersih, mau lanjut ke tahap kirim/proses
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
