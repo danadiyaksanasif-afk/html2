@@ -3958,7 +3958,7 @@ function startLoopTyping() {
         let aiResponseText = '';
         const reportKeyAttempt = (num, total) => {
           if (total > 1) console.log(`[AI] "${currentSelectedModel.name}" — mencoba API Key ke-${num} dari ${total}`);
-          if (voiceModeActive && total > 1) setVoiceModeStatus(`Memproses (API key ${num}/${total})...`, null);
+          if (voiceModeActive && total > 1) setVoiceModeStatus(`Memuat Server ${num}/${total}...`, null);
         };
         if (String(currentSelectedModel.provider).toLowerCase() === 'gemini') {
           aiResponseText = await callGemini(currentSelectedModel, text, hasVideo ? sentMedia : sentImages, sentMediaKind, sentMediaMime, abortController.signal, reportKeyAttempt);
@@ -3972,7 +3972,7 @@ function startLoopTyping() {
       } catch (error) {
         if (error.name !== 'AbortError') {
           console.error('[AI] Gagal mendapat balasan:', error.message);
-          appendMessage('ai', 'Server sepertinya sedang ada gangguan, mohon tunggu beberapa waktu 🙏');
+          appendMessage('ai', 'Server sedang mengalami gangguan. Mohon coba kembali beberapa saat lagi.');
         }
       } finally {
         removeThinking();
