@@ -3956,23 +3956,21 @@ function startLoopTyping() {
 
       try {
         let aiResponseText = '';
+        const reportKeyAttempt = (num, total) => {
+          if (total > 1) console.log(`[AI] "${currentSelectedModel.name}" — mencoba API Key ke-${num} dari ${total}`);
+          if (voiceModeActive && total > 1) setVoiceModeStatus(`Memuat Server ${num}/${total}...`, null);
+        };
         if (String(currentSelectedModel.provider).toLowerCase() === 'gemini') {
-          aiResponseText = await callGemini(currentSelectedModel, text, hasVideo ? sentMedia : sentImages, sentMediaKind, sentMediaMime, abortController.signal);
+          aiResponseText = await callGemini(currentSelectedModel, text, hasVideo ? sentMedia : sentImages, sentMediaKind, sentMediaMime, abortController.signal, reportKeyAttempt);
         } else {
-          aiResponseText = await callOpenAICompatible(currentSelectedModel, currentChatMessages, abortController.signal);
+          aiResponseText = await callOpenAICompatible(currentSelectedModel, currentChatMessages, abortController.signal, reportKeyAttempt);
         }
         removeThinking();
         const shownText = await appendMessage('ai', aiResponseText, null, true);
         currentChatMessages.push({ role: 'assistant', text: shownText });
         persistCurrentChat();
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          const errText = '❌ Error: ' + (error.message || 'Gagal memproses permintaan');
-          appendMessage('ai', errText);
-          // Simpan juga ke history supaya Voice Mode bisa deteksi gagal & kasih feedback suara
-          currentChatMessages.push({ role: 'assistant', text: errText, isError: true });
-          persistCurrentChat();
-        }
+        if (error.name !== 'AbortError') appendMessage('ai', '❌ Error: ' + error.message);
       } finally {
         removeThinking();
         setLoadingState(false);
@@ -3981,10 +3979,8 @@ function startLoopTyping() {
     }
 
     // ===== MULTI API KEY: fallback otomatis berurutan (key 1 -> 2 -> 3 -> ...) =====
-    // Setiap pesan baru SELALU mulai coba dari key pertama lagi.
-    // Jadi begitu key 1 pulih dari rate-limit, otomatis dipakai lagi di request berikutnya.
-    // Kalau key terakhir juga limit/gagal, error digabung & dilempar (semua key habis).
-    // Berlaku sama untuk chat biasa maupun Voice Mode (karena keduanya lewat sendMessage).
+    // Setiap pesan baru selalu mulai coba dari key pertama lagi, jadi begitu key 1
+    // pulih dari limit, otomatis kepakai lagi di percobaan berikutnya.
     function parseApiKeys(raw) {
       if (!raw) return [];
       try {
@@ -3994,43 +3990,24 @@ function startLoopTyping() {
       return [String(raw).trim()].filter(Boolean);
     }
 
-    function isRetryableApiError(err) {
-      if (!err) return false;
-      if (err.name === 'AbortError') return false;
-      const status = err.status || err.statusCode || 0;
-      if (status === 429 || status === 503 || status === 502 || status === 500 || status === 408) return true;
-      const msg = String(err.message || err || '').toLowerCase();
-      return /rate.?limit|quota|too many requests|limit exceeded|resource exhausted|overloaded|capacity|temporar|timeout|network|failed to fetch|econnreset|503|429/.test(msg);
-    }
-
-    async function callWithKeyFallback(modelConfig, callFn) {
+    async function callWithKeyFallback(modelConfig, callFn, onAttempt) {
       const keys = parseApiKeys(modelConfig.api_key);
       if (!keys.length) throw new Error('API key belum diisi untuk model ini.');
       let lastError = null;
-      const triedErrors = [];
       for (let i = 0; i < keys.length; i++) {
+        if (typeof onAttempt === 'function') onAttempt(i + 1, keys.length);
         try {
-          const result = await callFn(keys[i]);
-          return result;
+          return await callFn(keys[i]);
         } catch (err) {
           if (err.name === 'AbortError') throw err;
           lastError = err;
-          triedErrors.push({ index: i + 1, message: err.message || String(err) });
-          // Lanjut ke key berikutnya (rate-limit maupun error lain),
-          // biar key yang invalid/rusak tidak menghalangi key lain yang masih sehat.
+          console.warn(`[AI] API Key ke-${i + 1}/${keys.length} gagal:`, err.message);
         }
       }
-      const detail = triedErrors.map(e => '#' + e.index + ': ' + e.message).join(' | ');
-      const finalErr = new Error(
-        keys.length > 1
-          ? ('Semua ' + keys.length + ' API key gagal. ' + (lastError && lastError.message ? lastError.message : '') + (detail ? ' [' + detail + ']' : ''))
-          : ((lastError && lastError.message) || 'API key gagal dipakai.')
-      );
-      if (lastError && lastError.status) finalErr.status = lastError.status;
-      throw finalErr;
+      throw lastError || new Error('Semua API key untuk model ini gagal dipakai.');
     }
 
-    async function callGemini(modelConfig, prompt, mediaData, mediaKind, mediaMime, signal) {
+    async function callGemini(modelConfig, prompt, mediaData, mediaKind, mediaMime, signal, onAttempt) {
       const endpoint = modelConfig.endpoint.replace(/\/+$/, '');
       const modelId = modelConfig.model_id.replace(/^models\//, '').replace(/\/+$/, '');
       const parts = [];
@@ -4057,19 +4034,13 @@ function startLoopTyping() {
             contents: [{ role: 'user', parts }]
           })
         });
-        let json = null;
-        try { json = await response.json(); } catch (_) {}
-        if (!response.ok) {
-          const msg = (json && (json.error?.message || json.message)) || ('HTTP ' + response.status);
-          const err = new Error(msg);
-          err.status = response.status;
-          throw err;
-        }
+        const json = await response.json();
+        if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
         return json?.candidates?.[0]?.content?.parts?.filter(p => typeof p.text === 'string')?.map(p => p.text)?.join('') || '';
-      });
+      }, onAttempt);
     }
 
-    async function callOpenAICompatible(modelConfig, history, signal) {
+    async function callOpenAICompatible(modelConfig, history, signal, onAttempt) {
       const messages = [
         { role: 'system', content: 'Kamu adalah AI. AI yang telah dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
         ...history.map(msg => {
@@ -4092,16 +4063,10 @@ function startLoopTyping() {
           signal,
           body: JSON.stringify({ model: modelConfig.model_id, messages })
         });
-        let json = null;
-        try { json = await response.json(); } catch (_) {}
-        if (!response.ok) {
-          const msg = (json && (json.error?.message || json.message)) || ('HTTP ' + response.status);
-          const err = new Error(msg);
-          err.status = response.status;
-          throw err;
-        }
+        const json = await response.json();
+        if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
         return json?.choices?.[0]?.message?.content || '';
-      });
+      }, onAttempt);
     }
 
     let activeTypingStop = null;
@@ -4781,14 +4746,6 @@ function startLoopTyping() {
       if (currentChatMessages.length > beforeLen) {
         const lastAI = [...currentChatMessages].reverse().find(m => m.role === 'assistant');
         if (lastAI && lastAI.text) {
-          // Kalau semua API key gagal (rate-limit dsb), jangan bacakan error mentah.
-          // Kasih feedback singkat lalu lanjut dengar lagi.
-          if (lastAI.isError || /^❌\s*Error:/i.test(lastAI.text)) {
-            setVoiceModeStatus('Semua API key sedang limit...', null);
-            const softMsg = 'Maaf, saat ini sistem sedang sibuk. Silakan tunggu beberapa saat, lalu coba lagi.';
-            speakInVoiceMode(softMsg);
-            return;
-          }
           speakInVoiceMode(lastAI.text);
           return;
         }
