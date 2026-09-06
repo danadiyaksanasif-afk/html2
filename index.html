@@ -1085,7 +1085,7 @@ textarea,
       align-items: center;
       justify-content: center;
       background: var(--accent-gradient);
-      box-shadow: 0 0 60px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 0 28px rgba(99, 102, 241, 0.22);
       animation: voiceIdle 3.2s ease-in-out infinite;
     }
 
@@ -1094,7 +1094,7 @@ textarea,
       height: 62%;
       object-fit: contain;
       border-radius: 50%;
-      filter: drop-shadow(0 0 18px rgba(255,255,255,0.25));
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.15));
     }
 
     @keyframes voiceIdle {
@@ -1106,16 +1106,16 @@ textarea,
       animation: voiceListening 1.4s ease-in-out infinite;
     }
     @keyframes voiceListening {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(99, 102, 241, 0.35); }
-      50% { transform: scale(1.1); box-shadow: 0 0 90px rgba(99, 102, 241, 0.55); }
+      0%, 100% { transform: scale(1); box-shadow: 0 0 28px rgba(99, 102, 241, 0.22); }
+      50% { transform: scale(1.1); box-shadow: 0 0 42px rgba(99, 102, 241, 0.32); }
     }
 
     .voice-mode-overlay.speaking .voice-mode-orb-wrap {
       animation: voiceSpeaking 0.6s ease-in-out infinite;
     }
     @keyframes voiceSpeaking {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 50px rgba(6, 182, 212, 0.4); }
-      50% { transform: scale(1.14); box-shadow: 0 0 100px rgba(6, 182, 212, 0.7); }
+      0%, 100% { transform: scale(1); box-shadow: 0 0 24px rgba(6, 182, 212, 0.25); }
+      50% { transform: scale(1.14); box-shadow: 0 0 42px rgba(6, 182, 212, 0.4); }
     }
 
     .voice-mode-status {
@@ -3362,6 +3362,17 @@ PEMBUAT APLIKASI: Zain Suryo Negoro.
 Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi AI ini dibuat oleh Zain Suryo Negoro.
 Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google, OpenAI, Anthropic, atau penyedia model yang sedang digunakan.
 `;
+
+      if (voiceModeActive) {
+        return creatorInstruction + `
+Kamu sekarang lagi di mode PERCAKAPAN SUARA (telepon suara), bukan chat teks biasa. Jawabanmu akan langsung dibacakan keras, jadi ikuti ini:
+- Jawab singkat & to the point, ngobrol kayak orang asli, bukan kayak nulis artikel/dokumen.
+- JANGAN pakai format list bernomor (1. 2. 3.), bullet point, heading, atau simbol markdown apa pun. Itu aneh banget kalau dibacakan.
+- JANGAN selalu buka jawaban dengan sapaan generik kayak "Halo!" atau "Tentu!" di setiap balasan, kecuali penggunanya memang baru menyapa duluan.
+- Kalau ditanya cara/tutorial melakukan sesuatu, jelasin ngalir kayak lagi cerita ke teman, bukan poin-poin bernomor.
+- Boleh sesekali pakai gaya ngomong manusia asli, kayak "hmm...", "ya...", "gini...", secukupnya aja, jangan berlebihan.
+- PENTING: tetap jawab sepenuhnya pakai Bahasa Indonesia.`;
+      }
 
       if (deepResearchEnabled) {
         return creatorInstruction + '\nMode Riset Mendalam aktif. Berikan jawaban yang lebih teliti, lengkap, terstruktur, dan mendalam. PENTING: Kamu WAJIB memproses dan menjawab sepenuhnya menggunakan Bahasa Indonesia.';
