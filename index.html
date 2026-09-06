@@ -3407,8 +3407,8 @@ let viewingOtherModels = false;
     function getResponseModeInstruction() {
       const creatorInstruction = `
 IDENTITAS APLIKASI: Kamu adalah AI yang digunakan.
-PEMBUAT APLIKASI: Zain Suryo Negoro.
-Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa aplikasi AI ini dibuat oleh Zain Suryo Negoro.
+PEMBUAT AI: Zain Suryo Negoro.
+Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa AI ini dibuat oleh Zain Suryo Negoro.
 Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google, OpenAI, Anthropic, atau penyedia model yang sedang digunakan.
 `;
 
@@ -3772,7 +3772,7 @@ function startLoopTyping() {
         return;
       }
 
-      const maxVideoSize = 20 * 1024 * 1024;
+      const maxVideoSize = 50 * 1024 * 1024;
       if (file.size > maxVideoSize) {
         showWarningModal('Video terlalu besar. Untuk upload langsung dari browser, gunakan video maksimal 20 MB.', 'Video Terlalu Besar');
         event.target.value = '';
@@ -4033,7 +4033,7 @@ function startLoopTyping() {
           headers: { 'Content-Type': 'application/json' },
           signal,
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: 'Kamu adalah AI yang dibuat oleh Zain Suryo Negoro. AI ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
+            systemInstruction: { parts: [{ text: 'Kamu adalah AI yang dibuat oleh Zain Suryo Negoro. AI ini dibuat oleh Zain Suryo Negoro. Jika ditanya siapa pembuat AI ini, jawab: Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
             contents: [{ role: 'user', parts }]
           })
         });
