@@ -2982,7 +2982,7 @@ let viewingOtherModels = false;
           }
           // Penyimpanan HP penuh: buang gambar dari chat terlama satu per satu (teksnya tetap disimpan), lalu coba lagi
           if (!dropOldestStoredImage()) {
-            alert('Penyimpanan HP sudah penuh. Hapus beberapa riwayat chat lama agar chat baru bisa tersimpan.');
+            showWarningModal('Penyimpanan HP sudah penuh. Hapus beberapa riwayat chat lama agar chat baru bisa tersimpan.', 'Penyimpanan Penuh');
             return;
           }
         }
@@ -4351,8 +4351,8 @@ function startLoopTyping() {
       }
     }
 
-    function showProjectInfo() { alert('Fitur proyek belum dikonfigurasi.'); }
-    function showToolsInfo() { alert('Akses alat masih mengikuti konfigurasi Admin Control.'); }
+    function showProjectInfo() { showWarningModal('Fitur proyek belum dikonfigurasi.', 'Info'); }
+    function showToolsInfo() { showWarningModal('Akses alat masih mengikuti konfigurasi Admin Control.', 'Info'); }
     function handleModelSheetNav() {
       if (viewingOtherModels) {
         toggleOtherModels();
@@ -4456,7 +4456,7 @@ function startLoopTyping() {
         isVoiceRecording = false;
         updateMicButtonState();
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          alert('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.');
+          showWarningModal('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.', 'Izin Mikrofon Ditolak');
         } else if (event.error === 'no-speech') {
           // Diam saja, user mungkin belum sempat bicara.
         }
@@ -4479,7 +4479,7 @@ function startLoopTyping() {
 
     function toggleVoiceInput() {
       if (!getSpeechRecognitionAPI()) {
-        alert('Input suara tidak didukung di browser/perangkat ini. Coba pakai Chrome versi terbaru.');
+        showWarningModal('Input suara tidak didukung di browser/perangkat ini. Coba pakai Chrome versi terbaru.', 'Tidak Didukung');
         return;
       }
 
@@ -4553,7 +4553,7 @@ function startLoopTyping() {
 
     function openVoiceMode() {
       if (!getSpeechRecognitionAPI()) {
-        alert('Voice Mode butuh dukungan pengenalan suara (Speech Recognition). Coba pakai Chrome versi terbaru.');
+        showWarningModal('Voice Mode butuh dukungan pengenalan suara (Speech Recognition). Coba pakai Chrome versi terbaru.', 'Voice Mode Tidak Didukung');
         return;
       }
       const overlay = document.getElementById('voiceModeOverlay');
@@ -4616,7 +4616,7 @@ function startLoopTyping() {
 
       rec.onerror = (event) => {
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          alert('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.');
+          showWarningModal('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.', 'Izin Mikrofon Ditolak');
           closeVoiceMode();
           return;
         }
@@ -4632,7 +4632,7 @@ function startLoopTyping() {
 
     async function voiceModeSendToAI(text) {
       if (!voiceModeActive) return;
-      setVoiceModeStatus('Memproses...', null);
+      setVoiceModeStatus('Memikirkan...', null);
 
       const input = document.getElementById('promptInput');
       if (input) input.value = text;
@@ -4804,7 +4804,7 @@ function startLoopTyping() {
       if (browserSpeak(content, finish)) return;
 
       finish();
-      alert('Fitur suara tidak didukung perangkat ini.');
+      showWarningModal('Fitur suara tidak didukung perangkat ini.', 'Suara Tidak Didukung');
     }
 
     function giveFeedback(button, type) {
