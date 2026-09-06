@@ -3958,7 +3958,7 @@ function startLoopTyping() {
         let aiResponseText = '';
         const reportKeyAttempt = (num, total) => {
           if (total > 1) console.log(`[AI] "${currentSelectedModel.name}" — mencoba API Key ke-${num} dari ${total}`);
-          if (voiceModeActive && total > 1) setVoiceModeStatus(`Memuat Server ${num}/${total}...`, null);
+          if (voiceModeActive && total > 1) setVoiceModeStatus(`Memproses (API key ${num}/${total})...`, null);
         };
         if (String(currentSelectedModel.provider).toLowerCase() === 'gemini') {
           aiResponseText = await callGemini(currentSelectedModel, text, hasVideo ? sentMedia : sentImages, sentMediaKind, sentMediaMime, abortController.signal, reportKeyAttempt);
@@ -3970,7 +3970,10 @@ function startLoopTyping() {
         currentChatMessages.push({ role: 'assistant', text: shownText });
         persistCurrentChat();
       } catch (error) {
-        if (error.name !== 'AbortError') appendMessage('ai', '❌ Error: ' + error.message);
+        if (error.name !== 'AbortError') {
+          console.error('[AI] Gagal mendapat balasan:', error.message);
+          appendMessage('ai', 'Server sepertinya sedang ada gangguan, mohon tunggu beberapa waktu 🙏');
+        }
       } finally {
         removeThinking();
         setLoadingState(false);
@@ -4041,9 +4044,15 @@ function startLoopTyping() {
     }
 
     async function callOpenAICompatible(modelConfig, history, signal, onAttempt) {
+      // Batasi cuma kirim N pesan terakhir. Kalau riwayat dikirim mentah-mentah tanpa batas,
+      // makin panjang chat makin besar request-nya sampai akhirnya kena "Request too large"
+      // di model yang TPM/limitnya kecil (mis. gpt-oss-20b) — dan itu KENA di SEMUA API key
+      // karena masalahnya di ukuran request, bukan di key mana yang dipakai.
+      const MAX_HISTORY_MESSAGES = 16;
+      const trimmedHistory = history.length > MAX_HISTORY_MESSAGES ? history.slice(-MAX_HISTORY_MESSAGES) : history;
       const messages = [
         { role: 'system', content: 'Kamu adalah AI. AI yang telah dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
-        ...history.map(msg => {
+        ...trimmedHistory.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
           const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
           const images = Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []);
