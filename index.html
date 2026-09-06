@@ -4043,13 +4043,35 @@ function startLoopTyping() {
       }, onAttempt);
     }
 
+    // Perkiraan kasar jumlah token dari sebuah teks (~4 karakter = 1 token)
+    function estimateTokens(str) {
+      return Math.ceil((str || '').length / 4);
+    }
+
+    // Potong riwayat dari yang PALING LAMA sampai total perkiraan token di bawah budget.
+    // Ini lebih presisi daripada batasi jumlah pesan, karena batas TPM di provider
+    // dihitung dari jumlah token beneran, bukan banyaknya pesan.
+    function trimHistoryByTokenBudget(history, maxTokens = 4000) {
+      const result = [];
+      let total = 0;
+      for (let i = history.length - 1; i >= 0; i--) {
+        const msg = history[i];
+        const imgCount = Array.isArray(msg.images) ? msg.images.length : (msg.image ? 1 : 0);
+        const cost = estimateTokens(msg.text) + imgCount * 300; // gambar diperkirakan ~300 token/lembar
+        if (result.length > 0 && total + cost > maxTokens) break; // minimal 1 pesan tetap disertakan
+        result.unshift(msg);
+        total += cost;
+      }
+      return result;
+    }
+
     async function callOpenAICompatible(modelConfig, history, signal, onAttempt) {
-      // Batasi cuma kirim N pesan terakhir. Kalau riwayat dikirim mentah-mentah tanpa batas,
-      // makin panjang chat makin besar request-nya sampai akhirnya kena "Request too large"
-      // di model yang TPM/limitnya kecil (mis. gpt-oss-20b) — dan itu KENA di SEMUA API key
-      // karena masalahnya di ukuran request, bukan di key mana yang dipakai.
-      const MAX_HISTORY_MESSAGES = 16;
-      const trimmedHistory = history.length > MAX_HISTORY_MESSAGES ? history.slice(-MAX_HISTORY_MESSAGES) : history;
+      // Batasi riwayat yang dikirim berdasarkan perkiraan token, bukan jumlah pesan mentah.
+      // Kalau riwayat dikirim tanpa batas / cuma dibatasi jumlah pesan, chat yang jawabannya
+      // panjang-panjang tetap bisa kena "Request too large" di model yang TPM-nya kecil
+      // (mis. gpt-oss-20b, cap 8000) — dan itu KENA di SEMUA API key karena masalahnya di
+      // ukuran request, bukan di key mana yang dipakai.
+      const trimmedHistory = trimHistoryByTokenBudget(history, 4000);
       const messages = [
         { role: 'system', content: 'Kamu adalah AI. AI yang telah dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
         ...trimmedHistory.map(msg => {
