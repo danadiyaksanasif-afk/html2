@@ -4601,7 +4601,10 @@ function startLoopTyping() {
       rec.continuous = false;
       rec.interimResults = false;
 
+      let handled = false; // biar onend di bawah gak ikut restart dobel kalau onresult/onerror udah nanganin
+
       rec.onresult = (event) => {
+        handled = true;
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
@@ -4615,6 +4618,7 @@ function startLoopTyping() {
       };
 
       rec.onerror = (event) => {
+        handled = true;
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           showWarningModal('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.', 'Izin Mikrofon Ditolak');
           closeVoiceMode();
@@ -4622,6 +4626,18 @@ function startLoopTyping() {
         }
         if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking) {
           setTimeout(() => startVoiceModeListening(), 400);
+        }
+      };
+
+      // Sebagian browser/WebView langsung munculin "end" pas didiemin lama,
+      // tanpa lewat onresult/onerror dulu. Kalau dibiarkan, mic jadi kerasa
+      // "mati sendiri". Jadi kalau itu terjadi & sesi ini masih yang aktif
+      // (belum digantikan sesi baru), dengerin lagi otomatis.
+      rec.onend = () => {
+        if (handled) return;
+        if (voiceModeRecognition !== rec) return;
+        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking) {
+          setTimeout(() => startVoiceModeListening(), 300);
         }
       };
 
