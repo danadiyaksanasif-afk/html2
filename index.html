@@ -4043,35 +4043,17 @@ function startLoopTyping() {
       }, onAttempt);
     }
 
-    // Perkiraan kasar jumlah token dari sebuah teks (~4 karakter = 1 token)
-    function estimateTokens(str) {
-      return Math.ceil((str || '').length / 4);
-    }
-
-    // Potong riwayat dari yang PALING LAMA sampai total perkiraan token di bawah budget.
-    // Ini lebih presisi daripada batasi jumlah pesan, karena batas TPM di provider
-    // dihitung dari jumlah token beneran, bukan banyaknya pesan.
-    function trimHistoryByTokenBudget(history, maxTokens = 4000) {
-      const result = [];
-      let total = 0;
-      for (let i = history.length - 1; i >= 0; i--) {
-        const msg = history[i];
-        const imgCount = Array.isArray(msg.images) ? msg.images.length : (msg.image ? 1 : 0);
-        const cost = estimateTokens(msg.text) + imgCount * 300; // gambar diperkirakan ~300 token/lembar
-        if (result.length > 0 && total + cost > maxTokens) break; // minimal 1 pesan tetap disertakan
-        result.unshift(msg);
-        total += cost;
-      }
-      return result;
+    // Cuma ingat N obrolan terakhir (1 obrolan = 1 pesan kamu + 1 balasan AI).
+    // Pesan yang lebih lama dari itu dianggap AI nggak perlu ingat lagi — request
+    // jadi selalu kecil & stabil, nggak akan pernah "kegedean" lagi.
+    function trimHistoryToLastTurns(history, maxTurns = 3) {
+      const maxMessages = maxTurns * 2;
+      return history.length > maxMessages ? history.slice(-maxMessages) : history;
     }
 
     async function callOpenAICompatible(modelConfig, history, signal, onAttempt) {
-      // Batasi riwayat yang dikirim berdasarkan perkiraan token, bukan jumlah pesan mentah.
-      // Kalau riwayat dikirim tanpa batas / cuma dibatasi jumlah pesan, chat yang jawabannya
-      // panjang-panjang tetap bisa kena "Request too large" di model yang TPM-nya kecil
-      // (mis. gpt-oss-20b, cap 8000) — dan itu KENA di SEMUA API key karena masalahnya di
-      // ukuran request, bukan di key mana yang dipakai.
-      const trimmedHistory = trimHistoryByTokenBudget(history, 4000);
+      // AI cuma diingatkan 3 obrolan (pesan kamu + balasan AI) paling akhir, sisanya "dilupakan".
+      const trimmedHistory = trimHistoryToLastTurns(history, 3);
       const messages = [
         { role: 'system', content: 'Kamu adalah AI. AI yang telah dibuat oleh Zain Suryo Negoro. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
         ...trimmedHistory.map(msg => {
