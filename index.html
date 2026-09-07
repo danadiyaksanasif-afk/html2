@@ -4757,6 +4757,7 @@ function startLoopTyping() {
     function closeVoiceMode() {
       voiceModeActive = false;
       voiceModeSpeaking = false;
+      voiceModeProcessing = false;
       stopAllSpeech();
       // Kembalikan suara sistem & lepas audio focus
       setNativeVoiceMode(false);
@@ -4784,40 +4785,36 @@ function startLoopTyping() {
       }
     }
 
+    let voiceModeProcessing = false; // true saat lagi kirim ke AI / tunggu balasan
+
+    function stopVoiceRecognitionClean() {
+      if (!voiceModeRecognition) return;
+      try {
+        voiceModeRecognition.onend = null;
+        voiceModeRecognition.onresult = null;
+        voiceModeRecognition.onerror = null;
+        voiceModeRecognition.stop();
+      } catch (_) {}
+      voiceModeRecognition = null;
+    }
+
     function startVoiceModeListening() {
-      if (!voiceModeActive || voiceModeMuted) return;
+      if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking || voiceModeProcessing) return;
       const SpeechRecognitionAPI = getSpeechRecognitionAPI();
       if (!SpeechRecognitionAPI) return;
 
-      // Kalau sudah ada sesi recognition yang masih hidup, jangan buat yang baru
-      // (biar mic tidak nyala-mati berulang).
-      if (voiceModeRecognition) {
-        try {
-          if (voiceModeRecognition._isRunning) return;
-        } catch (_) {}
-      }
-
-      // Hentikan sesi lama dengan bersih sebelum start ulang (hanya jika perlu)
-      if (voiceModeRecognition) {
-        try {
-          voiceModeRecognition.onend = null;
-          voiceModeRecognition.onresult = null;
-          voiceModeRecognition.onerror = null;
-          voiceModeRecognition.stop();
-        } catch (_) {}
-        voiceModeRecognition = null;
-      }
+      // Sudah ada sesi aktif → jangan start ulang (mic tetap nyala)
+      if (voiceModeRecognition) return;
 
       const rec = new SpeechRecognitionAPI();
       rec.lang = 'id-ID';
-      // continuous = true → mic tetap aktif, tidak mati tiap selesai 1 kalimat
       rec.continuous = true;
-      // interimResults = true biar bisa deteksi akhir ucapan lebih cepat
       rec.interimResults = true;
 
-      let finalBuffer = '';
+      let committedText = '';
+      let interimText = '';
       let silenceTimer = null;
-      const SILENCE_MS = 1200; // setelah 1.2 detik tidak ada hasil baru → anggap selesai bicara
+      const SILENCE_MS = 1400;
 
       function clearSilenceTimer() {
         if (silenceTimer) {
@@ -4826,68 +4823,75 @@ function startLoopTyping() {
         }
       }
 
+      function getBestText() {
+        return (committedText + ' ' + interimText).replace(/\s+/g, ' ').trim();
+      }
+
       function flushAndSend() {
         clearSilenceTimer();
-        const text = finalBuffer.trim();
-        finalBuffer = '';
-        if (text && voiceModeActive && !voiceModeSpeaking && !voiceModeMuted) {
-          // Hentikan recognition dulu supaya tidak menangkap suara AI sendiri
-          try {
-            rec.onend = null;
-            rec.stop();
-          } catch (_) {}
-          voiceModeRecognition = null;
-          voiceModeSendToAI(text);
-        }
+        const text = getBestText();
+        committedText = '';
+        interimText = '';
+        if (!text) return;
+        if (!voiceModeActive || voiceModeSpeaking || voiceModeMuted || voiceModeProcessing) return;
+
+        stopVoiceRecognitionClean();
+        voiceModeSendToAI(text);
       }
 
       rec.onresult = (event) => {
-        if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking) return;
+        if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking || voiceModeProcessing) return;
 
-        let gotFinal = false;
+        interimText = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           const piece = (result[0] && result[0].transcript) ? result[0].transcript : '';
+          if (!piece) continue;
           if (result.isFinal) {
-            finalBuffer += piece + ' ';
-            gotFinal = true;
+            committedText += piece + ' ';
+          } else {
+            interimText += piece;
           }
         }
 
-        // Setiap ada hasil (final), reset timer diam
+        // Android sering hanya kirim interim — timer diam harus jalan juga dari interim
         clearSilenceTimer();
-        if (gotFinal || finalBuffer.trim()) {
+        if (getBestText()) {
           silenceTimer = setTimeout(flushAndSend, SILENCE_MS);
         }
       };
 
       rec.onerror = (event) => {
         clearSilenceTimer();
-        // error "no-speech" / "aborted" sering muncul di continuous mode, jangan panik
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           showWarningModal('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.', 'Izin Mikrofon Ditolak');
           closeVoiceMode();
           return;
         }
-        // Restart hanya jika sesi ini masih yang aktif & mode masih listening
-        if (voiceModeRecognition === rec && voiceModeActive && !voiceModeMuted && !voiceModeSpeaking) {
-          voiceModeRecognition = null;
-          setTimeout(() => startVoiceModeListening(), 500);
+        if (voiceModeRecognition === rec) voiceModeRecognition = null;
+        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing) {
+          setTimeout(() => startVoiceModeListening(), 450);
         }
       };
 
       rec.onend = () => {
         clearSilenceTimer();
-        // Continuous mode kadang tetap memicu onend (terutama di Android WebView).
-        // Restart HANYA jika masih di mode listening dan belum diganti sesi baru.
         if (voiceModeRecognition !== rec) return;
         voiceModeRecognition = null;
-        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking) {
-          setTimeout(() => startVoiceModeListening(), 350);
+
+        const leftover = getBestText();
+        if (leftover && voiceModeActive && !voiceModeSpeaking && !voiceModeMuted && !voiceModeProcessing) {
+          committedText = '';
+          interimText = '';
+          voiceModeSendToAI(leftover);
+          return;
+        }
+
+        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing) {
+          setTimeout(() => startVoiceModeListening(), 300);
         }
       };
 
-      rec._isRunning = true;
       voiceModeRecognition = rec;
       setVoiceModeStatus('Mendengarkan...', 'listening');
       setNativeVoiceMode(true);
@@ -4895,34 +4899,50 @@ function startLoopTyping() {
       try {
         rec.start();
       } catch (_) {
-        // start() bisa gagal kalau dipanggil terlalu cepat; coba lagi sebentar
+        voiceModeRecognition = null;
         setTimeout(() => {
-          if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && voiceModeRecognition === rec) {
-            try { rec.start(); } catch (__) {}
+          if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing) {
+            startVoiceModeListening();
           }
-        }, 400);
+        }, 500);
       }
     }
 
     async function voiceModeSendToAI(text) {
       if (!voiceModeActive) return;
+      text = String(text || '').trim();
+      if (!text) {
+        startVoiceModeListening();
+        return;
+      }
+
+      voiceModeProcessing = true;
+      stopVoiceRecognitionClean();
       setVoiceModeStatus('Memikirkan...', null);
 
       const input = document.getElementById('promptInput');
       if (input) input.value = text;
 
       const beforeLen = currentChatMessages.length;
-      await sendMessage();
-      if (!voiceModeActive) return;
+      try {
+        await sendMessage();
+      } catch (_) {}
+
+      if (!voiceModeActive) {
+        voiceModeProcessing = false;
+        return;
+      }
 
       if (currentChatMessages.length > beforeLen) {
         const lastAI = [...currentChatMessages].reverse().find(m => m.role === 'assistant');
         if (lastAI && lastAI.text) {
+          voiceModeProcessing = false;
           speakInVoiceMode(lastAI.text);
           return;
         }
       }
-      // Tidak ada balasan baru (mis. model belum dipilih/terkunci) -> coba dengar lagi.
+
+      voiceModeProcessing = false;
       startVoiceModeListening();
     }
 
