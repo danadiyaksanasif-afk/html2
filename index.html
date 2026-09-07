@@ -3406,11 +3406,18 @@ let viewingOtherModels = false;
 
     function getResponseModeInstruction() {
       const creatorInstruction = `
-IDENTITAS AI: Kamu adalah AI yang digunakan.
-PEMBUAT AI: Zain Suryo Negoro, seorang programmer/developer aplikasi.
-Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat aplikasi ini, jawab bahwa AI ini dibuat oleh Zain Suryo Negoro.
-Kalau pengguna bertanya LEBIH LANJUT "siapa itu Zain Suryo Negoro" (bukan sekadar tanya siapa pembuat aplikasi), ceritakan pakai bahasamu sendiri secara natural bahwa dia seorang programmer/developer yang mengembangkan aplikasi dan AI ini — JANGAN cuma mengulang kalimat "AI ini dibuat oleh Zain Suryo Negoro" lagi, karena itu bukan jawaban yang pas buat pertanyaan "siapa dia".
-Jangan mengarang nama pembuat lain dan jangan mengklaim dibuat oleh kamu, Google, OpenAI, Anthropic, atau penyedia model yang sedang digunakan.
+ATURAN UTAMA (WAJIB DIIKUTI):
+1. Jawab HANYA sesuai isi pertanyaan pengguna. Fokus ke topik yang ditanyakan.
+2. JANGAN belok ke topik lain. JANGAN tiba-tiba membahas pembuat AI, identitas AI, atau Zain Suryo Negoro kecuali pengguna memang bertanya tentang itu.
+3. Soal matematika / hitungan (contoh: "400 + 400", "berapa 5x7") → langsung hitung dan jawab angkanya. Jangan mengaitkan ke pembuat AI.
+4. Pertanyaan umum, sains, sejarah, coding, dll → jawab sesuai topiknya, to the point.
+5. Kalau pertanyaan tidak jelas, minta klarifikasi singkat — jangan mengarang hubungan ke topik pembuat.
+
+IDENTITAS (hanya dipakai jika ditanya):
+- Pembuat AI/aplikasi ini: Zain Suryo Negoro (programmer/developer).
+- Jika ditanya "siapa pembuat / creator / developer AI ini" → jawab: Zain Suryo Negoro.
+- Jika ditanya lebih lanjut "siapa Zain Suryo Negoro" → ceritakan natural bahwa dia programmer/developer yang mengembangkan aplikasi dan AI ini (jangan cuma mengulang "dibuat oleh Zain Suryo Negoro").
+- Jangan mengarang nama pembuat lain. Jangan mengklaim dibuat oleh Google, OpenAI, Anthropic, atau penyedia model.
 `;
 
       if (voiceModeActive) {
@@ -4034,7 +4041,7 @@ function startLoopTyping() {
           headers: { 'Content-Type': 'application/json' },
           signal,
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: 'Kamu adalah AI yang dibuat oleh Zain Suryo Negoro, seorang programmer/developer. Jika ditanya siapa pembuat aplikasi ini, jawab: Zain Suryo Negoro. Kalau ditanya lebih lanjut siapa itu Zain Suryo Negoro, ceritakan pakai bahasamu sendiri kalau dia programmer/developer yang bikin aplikasi dan AI ini, jangan cuma mengulang "dibuat oleh Zain Suryo Negoro" lagi. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' }] },
+            systemInstruction: { parts: [{ text: 'ATURAN: Jawab sesuai pertanyaan user. Jangan belok topik. Soal hitungan langsung dihitung. Jangan bahas pembuat AI kecuali user memang bertanya tentang pembuat/creator/developer. Jika ditanya pembuat aplikasi: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat oleh Google/OpenAI/Anthropic/penyedia model.' }] },
             contents: [{ role: 'user', parts }]
           })
         });
@@ -4056,7 +4063,7 @@ function startLoopTyping() {
       // AI cuma diingatkan 3 obrolan (pesan kamu + balasan AI) paling akhir, sisanya "dilupakan".
       const trimmedHistory = trimHistoryToLastTurns(history, 3);
       const messages = [
-        { role: 'system', content: 'Kamu adalah AI yang telah dibuat oleh Zain Suryo Negoro, seorang programmer/developer. Jika pengguna bertanya siapa pembuat, creator, developer, atau pembuat AI ini, jawab bahwa pembuatnya adalah Zain Suryo Negoro. Kalau ditanya lebih lanjut siapa itu Zain Suryo Negoro, ceritakan pakai bahasamu sendiri kalau dia programmer/developer yang bikin AI ini, jangan cuma mengulang "dibuat oleh Zain Suryo Negoro" lagi. Jangan mengklaim pembuatnya adalah penyedia model AI yang sedang digunakan.' },
+        { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Soal matematika/hitungan langsung hitung dan jawab. Jangan membahas pembuat AI kecuali user bertanya tentang pembuat/creator/developer. Jika ditanya pembuat aplikasi ini: Zain Suryo Negoro (programmer/developer). Kalau ditanya siapa dia lebih lanjut, ceritakan natural sebagai programmer yang mengembangkan aplikasi ini. Jangan klaim dibuat oleh Google/OpenAI/Anthropic/penyedia model.' },
         ...trimmedHistory.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
           const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
@@ -4758,8 +4765,6 @@ function startLoopTyping() {
       voiceModeActive = false;
       voiceModeSpeaking = false;
       voiceModeProcessing = false;
-      voiceModeCooldownUntil = 0;
-      voiceModeLastSent = '';
       stopAllSpeech();
       // Kembalikan suara sistem & lepas audio focus
       setNativeVoiceMode(false);
@@ -4788,8 +4793,6 @@ function startLoopTyping() {
     }
 
     let voiceModeProcessing = false; // true saat lagi kirim ke AI / tunggu balasan
-    let voiceModeCooldownUntil = 0;  // timestamp: jangan dengar dulu setelah AI bicara (hindari echo)
-    let voiceModeLastSent = '';      // cegah kirim teks yang sama berulang
 
     function stopVoiceRecognitionClean() {
       if (!voiceModeRecognition) return;
@@ -4802,111 +4805,97 @@ function startLoopTyping() {
       voiceModeRecognition = null;
     }
 
-    function normalizeVoiceText(t) {
-      return String(t || '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
-
-    // Sama-sama / hampir sama? (cegah spam "400 400 400")
-    function isDuplicateVoiceText(a, b) {
-      a = normalizeVoiceText(a).toLowerCase();
-      b = normalizeVoiceText(b).toLowerCase();
-      if (!a || !b) return false;
-      if (a === b) return true;
-      // kalau yang baru cuma pengulangan kata dari yang lama
-      if (a.length >= 6 && b.includes(a)) return true;
-      if (b.length >= 6 && a.includes(b)) return true;
-      return false;
-    }
-
     function startVoiceModeListening() {
       if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking || voiceModeProcessing) return;
-      if (Date.now() < voiceModeCooldownUntil) {
-        setTimeout(() => startVoiceModeListening(), Math.max(200, voiceModeCooldownUntil - Date.now()));
-        return;
-      }
       const SpeechRecognitionAPI = getSpeechRecognitionAPI();
       if (!SpeechRecognitionAPI) return;
 
-      // Sudah ada sesi aktif → jangan dobel
+      // Sudah ada sesi aktif → jangan start ulang (mic tetap nyala)
       if (voiceModeRecognition) return;
 
       const rec = new SpeechRecognitionAPI();
       rec.lang = 'id-ID';
-      // continuous=false lebih stabil di Android WebView:
-      // 1 ucapan = 1 hasil, tidak nge-spam / nge-duplikat seperti continuous=true
-      rec.continuous = false;
+      rec.continuous = true;
       rec.interimResults = true;
-      rec.maxAlternatives = 1;
 
-      let bestText = '';
-      let sent = false;
+      let committedText = '';
+      let interimText = '';
+      let silenceTimer = null;
+      const SILENCE_MS = 1400;
 
-      function maybeSend(text) {
-        if (sent) return;
-        text = normalizeVoiceText(text);
-        if (!text || text.length < 2) return;
-        if (!voiceModeActive || voiceModeSpeaking || voiceModeMuted || voiceModeProcessing) return;
-        // Abaikan duplikat dari pengiriman sebelumnya
-        if (isDuplicateVoiceText(text, voiceModeLastSent)) {
-          return;
+      function clearSilenceTimer() {
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
         }
-        sent = true;
+      }
+
+      function getBestText() {
+        return (committedText + ' ' + interimText).replace(/\s+/g, ' ').trim();
+      }
+
+      function flushAndSend() {
+        clearSilenceTimer();
+        const text = getBestText();
+        committedText = '';
+        interimText = '';
+        if (!text) return;
+        if (!voiceModeActive || voiceModeSpeaking || voiceModeMuted || voiceModeProcessing) return;
+
         stopVoiceRecognitionClean();
-        voiceModeLastSent = text;
         voiceModeSendToAI(text);
       }
 
       rec.onresult = (event) => {
-        if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking || voiceModeProcessing || sent) return;
+        if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking || voiceModeProcessing) return;
 
-        let interim = '';
-        let finalText = '';
+        interimText = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           const piece = (result[0] && result[0].transcript) ? result[0].transcript : '';
           if (!piece) continue;
-          if (result.isFinal) finalText += piece + ' ';
-          else interim += piece;
+          if (result.isFinal) {
+            committedText += piece + ' ';
+          } else {
+            interimText += piece;
+          }
         }
-        finalText = normalizeVoiceText(finalText);
-        interim = normalizeVoiceText(interim);
-        if (finalText) bestText = finalText;
-        else if (interim) bestText = interim;
 
-        // Kalau sudah final → langsung kirim (satu kali)
-        if (finalText) {
-          maybeSend(finalText);
+        // Android sering hanya kirim interim — timer diam harus jalan juga dari interim
+        clearSilenceTimer();
+        if (getBestText()) {
+          silenceTimer = setTimeout(flushAndSend, SILENCE_MS);
         }
       };
 
       rec.onerror = (event) => {
+        clearSilenceTimer();
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           showWarningModal('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.', 'Izin Mikrofon Ditolak');
           closeVoiceMode();
           return;
         }
-        // no-speech / aborted → restart halus, jangan spam
         if (voiceModeRecognition === rec) voiceModeRecognition = null;
-        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing && !sent) {
-          setTimeout(() => startVoiceModeListening(), 400);
+        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing) {
+          setTimeout(() => startVoiceModeListening(), 450);
         }
       };
 
       rec.onend = () => {
+        clearSilenceTimer();
         if (voiceModeRecognition !== rec) return;
         voiceModeRecognition = null;
 
-        // Kalau ada teks tapi belum sempat isFinal, kirim dari bestText
-        if (!sent && bestText) {
-          maybeSend(bestText);
+        const leftover = getBestText();
+        if (leftover && voiceModeActive && !voiceModeSpeaking && !voiceModeMuted && !voiceModeProcessing) {
+          committedText = '';
+          interimText = '';
+          voiceModeSendToAI(leftover);
           return;
         }
 
-        // Siap dengar ucapan berikutnya
-        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing && !sent) {
-          setTimeout(() => startVoiceModeListening(), 280);
+        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing) {
+          setTimeout(() => startVoiceModeListening(), 300);
         }
       };
 
@@ -4928,7 +4917,7 @@ function startLoopTyping() {
 
     async function voiceModeSendToAI(text) {
       if (!voiceModeActive) return;
-      text = normalizeVoiceText(text);
+      text = String(text || '').trim();
       if (!text) {
         startVoiceModeListening();
         return;
@@ -5055,14 +5044,11 @@ function startLoopTyping() {
       const clean = text.replace(/[*_#`>~]/g, '').replace(/\n{2,}/g, '. ');
 
       stopAllSpeech();
-      stopVoiceRecognitionClean(); // pastikan mic mati total saat AI bicara
       voiceModeSpeaking = true;
       setVoiceModeStatus('Berbicara...', 'speaking');
 
       const finishSpeaking = () => {
         voiceModeSpeaking = false;
-        // Cooldown 1.2s biar mic tidak ikut menelan sisa suara TTS / echo
-        voiceModeCooldownUntil = Date.now() + 1200;
         if (voiceModeActive && !voiceModeMuted) startVoiceModeListening();
       };
 
