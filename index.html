@@ -2532,7 +2532,7 @@ textarea,
         </div>
 
         <label class="switch" onclick="event.stopPropagation()">
-          <input type="checkbox" id="webSearchToggle" onchange="webSearchEnabled = this.checked;">
+          <input type="checkbox" id="webSearchToggle" checked onchange="webSearchEnabled = this.checked;">
           <span class="slider"></span>
         </label>
       </div>
@@ -2671,7 +2671,7 @@ let viewingOtherModels = false;
     let abortController = null;
 
     let responseMode = 'short';
-    let webSearchEnabled = false;
+    let webSearchEnabled = true;
 
     // ===== AKUN / LOGIN & AKSES PREMIUM =====
     const USER_SESSION_KEY = 'pretvfx_user_session';
@@ -3964,7 +3964,7 @@ function startLoopTyping() {
       clearImage();
       setLoadingState(true);
       abortController = new AbortController();
-      showThinking(webSearchEnabled);
+      showThinking();
 
       try {
         let aiResponseText = '';
@@ -3973,9 +3973,9 @@ function startLoopTyping() {
           if (voiceModeActive && total > 1) setVoiceModeStatus(`Memuat Server ${num}/${total}...`, null);
         };
         if (String(currentSelectedModel.provider).toLowerCase() === 'gemini') {
-          aiResponseText = await callGemini(currentSelectedModel, text, hasVideo ? sentMedia : sentImages, sentMediaKind, sentMediaMime, abortController.signal, reportKeyAttempt, webSearchEnabled);
+          aiResponseText = await callGemini(currentSelectedModel, text, hasVideo ? sentMedia : sentImages, sentMediaKind, sentMediaMime, abortController.signal, reportKeyAttempt);
         } else {
-          aiResponseText = await callOpenAICompatible(currentSelectedModel, currentChatMessages, abortController.signal, reportKeyAttempt, webSearchEnabled);
+          aiResponseText = await callOpenAICompatible(currentSelectedModel, currentChatMessages, abortController.signal, reportKeyAttempt);
         }
         removeThinking();
         const shownText = await appendMessage('ai', aiResponseText, null, true);
@@ -4022,7 +4022,7 @@ function startLoopTyping() {
       throw lastError || new Error('Semua API key untuk model ini gagal dipakai.');
     }
 
-    async function callGemini(modelConfig, prompt, mediaData, mediaKind, mediaMime, signal, onAttempt, webSearchEnabled) {
+    async function callGemini(modelConfig, prompt, mediaData, mediaKind, mediaMime, signal, onAttempt) {
       const endpoint = modelConfig.endpoint.replace(/\/+$/, '');
       const modelId = modelConfig.model_id.replace(/^models\//, '').replace(/\/+$/, '');
       const parts = [];
@@ -4046,10 +4046,7 @@ function startLoopTyping() {
           signal,
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: 'ATURAN: Jawab sesuai pertanyaan user, jangan belok topik. Hitungan langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.\n\n' + getModeStyleInstruction() }] },
-            contents: [{ role: 'user', parts }],
-            // "Pencarian web" nyala -> aktifkan Google Search grounding bawaan Gemini
-            // supaya jawaban bisa pakai info terkini dari internet, lengkap sumbernya.
-            ...(webSearchEnabled ? { tools: [{ google_search: {} }] } : {})
+            contents: [{ role: 'user', parts }]
           })
         });
         const json = await response.json();
@@ -4066,13 +4063,7 @@ function startLoopTyping() {
       return history.length > maxMessages ? history.slice(-maxMessages) : history;
     }
 
-    // Model Groq Compound: satu-satunya model di Groq yang punya kemampuan
-    // menelusuri web beneran (built-in web_search tool). Model biasa (Llama,
-    // Gemma, dll) TIDAK bisa cari web sama sekali, jadi saat toggle "Pencarian
-    // Web" nyala, request untuk endpoint Groq dialihkan sementara ke model ini.
-    const GROQ_WEB_SEARCH_MODEL = 'groq/compound-mini';
-
-    async function callOpenAICompatible(modelConfig, history, signal, onAttempt, webSearchEnabled) {
+    async function callOpenAICompatible(modelConfig, history, signal, onAttempt) {
       // AI cuma diingatkan 3 obrolan (pesan kamu + balasan AI) paling akhir, sisanya "dilupakan".
       const trimmedHistory = trimHistoryToLastTurns(history, 3);
       const messages = [
@@ -4091,31 +4082,12 @@ function startLoopTyping() {
           return { role, content: textContent };
         })
       ];
-
-      const endpointLower = String(modelConfig.endpoint || '').toLowerCase();
-      const isGroqEndpoint = endpointLower.includes('groq.com');
-      const isOpenRouterEndpoint = endpointLower.includes('openrouter.ai');
-      const hasImageContent = messages.some(m => Array.isArray(m.content));
-
-      const requestBody = { model: modelConfig.model_id, messages };
-
-      if (webSearchEnabled && isGroqEndpoint && !hasImageContent) {
-        // Groq: alihkan ke Compound + aktifkan tool web_search-nya secara eksplisit.
-        requestBody.model = GROQ_WEB_SEARCH_MODEL;
-        requestBody.compound_custom = { tools: { enabled_tools: ['web_search'] } };
-      } else if (webSearchEnabled && isOpenRouterEndpoint) {
-        // OpenRouter: nyalakan plugin web resmi mereka (model_id asli tetap dipakai).
-        requestBody.plugins = [{ id: 'web' }];
-      }
-      // Endpoint OpenAI-compatible lain di luar Groq/OpenRouter belum tentu punya
-      // fitur pencarian web sendiri, jadi toggle dibiarkan tidak berefek untuk itu.
-
       return await callWithKeyFallback(modelConfig, async (apiKey) => {
         const response = await fetch(modelConfig.endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
           signal,
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify({ model: modelConfig.model_id, messages })
         });
         const json = await response.json();
         if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
@@ -4540,7 +4512,7 @@ function startLoopTyping() {
       webSearchEnabled = checkbox.checked;
     }
 
-    function showThinking(isSearchingWeb = false) {
+    function showThinking() {
       const container = document.getElementById('messagesContainer');
       const thinking = document.createElement('div');
       thinking.className = 'message ai';
@@ -4548,7 +4520,7 @@ function startLoopTyping() {
       thinking.innerHTML = `
         <div class="ai-thinking">
           <div class="thinking-icon"></div>
-          <span>${isSearchingWeb ? 'Menelusuri web' : 'AI sedang berpikir'}</span>
+          <span>AI sedang berpikir</span>
           <div class="thinking-dots">
             <span></span><span></span><span></span>
           </div>
