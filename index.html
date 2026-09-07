@@ -3406,6 +3406,22 @@ let viewingOtherModels = false;
       }
     }
 
+    function getModeStyleInstruction() {
+      if (voiceModeActive) {
+        return `Kamu sekarang lagi di mode PERCAKAPAN SUARA (telepon suara), bukan chat teks biasa. Jawabanmu akan langsung dibacakan keras, jadi ikuti ini:
+- Jawab singkat & to the point, ngobrol kayak orang asli, bukan kayak nulis artikel/dokumen.
+- JANGAN pakai format list bernomor (1. 2. 3.), bullet point, heading, atau simbol markdown apa pun. Itu aneh banget kalau dibacakan.
+- JANGAN selalu buka jawaban dengan sapaan generik kayak "Halo!" atau "Tentu!" di setiap balasan, kecuali penggunanya memang baru menyapa duluan.
+- Kalau ditanya cara/tutorial melakukan sesuatu, jelasin ngalir kayak lagi cerita ke teman, bukan poin-poin bernomor.
+- Boleh sesekali pakai gaya ngomong manusia asli, kayak "hmm...", "ya...", "gini...", secukupnya aja, jangan berlebihan.
+- PENTING: tetap jawab sepenuhnya pakai Bahasa Indonesia.`;
+      }
+      if (deepResearchEnabled) {
+        return 'Mode Riset Mendalam aktif. Berikan jawaban yang lebih teliti, lengkap, terstruktur, dan mendalam. PENTING: Kamu WAJIB memproses dan menjawab sepenuhnya menggunakan Bahasa Indonesia.';
+      }
+      return 'Mode Riset Mendalam tidak aktif. Jawab secara singkat, jelas, langsung ke inti, dan jangan terlalu panjang. PENTING: Kamu WAJIB memproses dan menjawab sepenuhnya menggunakan Bahasa Indonesia.';
+    }
+
     function getResponseModeInstruction() {
       const creatorInstruction = `
 ATURAN UTAMA (WAJIB):
@@ -3417,27 +3433,12 @@ ATURAN UTAMA (WAJIB):
 6. Pakai bahasa santai & natural sehari-hari, ikutin gaya bahasa penggunanya (kalau dia santai/pakai bahasa gaul, kamu juga santai). Hindari bahasa kaku/formal berlebihan kayak "Apakah ada yang bisa saya bantu?" atau "Maaf, maksud Anda mau apa?" kecuali penggunanya sendiri yang ngomong formal duluan.
 
 IDENTITAS (hanya jika ditanya):
-- Pembuat AI: Zain Suryo Negoro (programmer/developer).
-- Jika ditanya siapa pembuat AI → jawab Zain Suryo Negoro.
-- Jika ditanya siapa dia lebih lanjut → ceritakan natural sebagai programmer yang mengembangkan AI ini.
+- Pembuat AI/aplikasi: Zain Suryo Negoro (programmer/developer).
+- Jika ditanya siapa pembuat aplikasi → jawab Zain Suryo Negoro.
+- Jika ditanya siapa dia lebih lanjut → ceritakan natural sebagai programmer yang mengembangkan aplikasi ini.
 - Jangan klaim dibuat oleh Google/OpenAI/Anthropic/penyedia model.
 `;
-
-      if (voiceModeActive) {
-        return creatorInstruction + `
-Kamu sekarang lagi di mode PERCAKAPAN SUARA (telepon suara), bukan chat teks biasa. Jawabanmu akan langsung dibacakan keras, jadi ikuti ini:
-- Jawab singkat & to the point, ngobrol kayak orang asli, bukan kayak nulis artikel/dokumen.
-- JANGAN pakai format list bernomor (1. 2. 3.), bullet point, heading, atau simbol markdown apa pun. Itu aneh banget kalau dibacakan.
-- JANGAN selalu buka jawaban dengan sapaan generik kayak "Halo!" atau "Tentu!" di setiap balasan, kecuali penggunanya memang baru menyapa duluan.
-- Kalau ditanya cara/tutorial melakukan sesuatu, jelasin ngalir kayak lagi cerita ke teman, bukan poin-poin bernomor.
-- Boleh sesekali pakai gaya ngomong manusia asli, kayak "hmm...", "ya...", "gini...", secukupnya aja, jangan berlebihan.
-- PENTING: tetap jawab sepenuhnya pakai Bahasa Indonesia.`;
-      }
-
-      if (deepResearchEnabled) {
-        return creatorInstruction + '\nMode Riset Mendalam aktif. Berikan jawaban yang lebih teliti, lengkap, terstruktur, dan mendalam. PENTING: Kamu WAJIB memproses dan menjawab sepenuhnya menggunakan Bahasa Indonesia.';
-      }
-      return creatorInstruction + '\nMode Riset Mendalam tidak aktif. Jawab secara singkat, jelas, langsung ke inti, dan jangan terlalu panjang. PENTING: Kamu WAJIB memproses dan menjawab sepenuhnya menggunakan Bahasa Indonesia.';
+      return creatorInstruction + '\n' + getModeStyleInstruction();
     }
 
 
@@ -4025,7 +4026,7 @@ function startLoopTyping() {
       const endpoint = modelConfig.endpoint.replace(/\/+$/, '');
       const modelId = modelConfig.model_id.replace(/^models\//, '').replace(/\/+$/, '');
       const parts = [];
-      if (prompt) parts.push({ text: `${getResponseModeInstruction()}\n\nPertanyaan pengguna:\n${prompt}` });
+      if (prompt) parts.push({ text: prompt });
 
       const mediaList = Array.isArray(mediaData) ? mediaData : (mediaData ? [mediaData] : []);
       for (const item of mediaList) {
@@ -4035,7 +4036,7 @@ function startLoopTyping() {
         if (!mimeType) throw new Error('MIME type media tidak ditemukan.');
         parts.push({ inline_data: { mime_type: mimeType, data } });
       }
-      if (!parts.length) parts.push({ text: getResponseModeInstruction() });
+      if (!parts.length) parts.push({ text: '(pesan kosong)' });
 
       return await callWithKeyFallback(modelConfig, async (apiKey) => {
         const url = `${endpoint}/${modelId}:generateContent?key=` + encodeURIComponent(apiKey);
@@ -4044,7 +4045,7 @@ function startLoopTyping() {
           headers: { 'Content-Type': 'application/json' },
           signal,
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: 'ATURAN: Jawab sesuai pertanyaan user, jangan belok topik. Hitungan langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.' }] },
+            systemInstruction: { parts: [{ text: 'ATURAN: Jawab sesuai pertanyaan user, jangan belok topik. Hitungan langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.\n\n' + getModeStyleInstruction() }] },
             contents: [{ role: 'user', parts }]
           })
         });
@@ -4066,10 +4067,11 @@ function startLoopTyping() {
       // AI cuma diingatkan 3 obrolan (pesan kamu + balasan AI) paling akhir, sisanya "dilupakan".
       const trimmedHistory = trimHistoryToLastTurns(history, 3);
       const messages = [
-        { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Matematika langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat AI: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.' },
+        { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Matematika langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat aplikasi: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.' },
+        { role: 'system', content: getModeStyleInstruction() },
         ...trimmedHistory.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
-          const textContent = msg.text ? `${getResponseModeInstruction()}\n\n${msg.text}` : '';
+          const textContent = msg.text || '';
           const images = Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []);
           if (images.length) {
             const content = [];
