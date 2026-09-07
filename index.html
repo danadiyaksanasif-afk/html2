@@ -1162,10 +1162,12 @@ textarea,
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: all .2s ease;
+      transition: background .2s ease, transform .1s ease;
+      touch-action: manipulation;
     }
 
     .voice-mode-btn:hover { background: rgba(255,255,255,0.16); }
+    .voice-mode-btn:active { transform: scale(0.88); }
 
     .voice-mode-btn.muted {
       color: #ef4444;
@@ -4770,12 +4772,20 @@ function startLoopTyping() {
       voiceModeCooldownUntil = 0;
       voiceModeLastSent = '';
       clearVoiceModeRestartTimer();
-      stopVoiceRecognitionClean(); // abort mic SEGERA
-      stopAllSpeech();
-      setNativeVoiceMode(false);
-      stopSilentAudioFocus();
+
+      // Tutup TAMPILANNYA duluan, SEKARANG JUGA, biar kerasa instan/enteng.
       const overlay = document.getElementById('voiceModeOverlay');
       if (overlay) overlay.classList.remove('show', 'listening', 'speaking');
+
+      // Proses beres-beres (termasuk panggilan ke sisi native Android yang bisa
+      // bikin macet sesaat) baru dijalankan SESUDAH tampilan berubah, bukan
+      // sebelumnya — biar itu gak bikin layar kerasa "nge-stuck" dulu baru ketutup.
+      setTimeout(() => {
+        stopVoiceRecognitionClean(); // abort mic
+        stopAllSpeech();
+        setNativeVoiceMode(false);
+        stopSilentAudioFocus();
+      }, 0);
     }
 
     function setVoiceModeStatus(text, mode) {
