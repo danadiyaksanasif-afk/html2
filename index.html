@@ -3772,9 +3772,9 @@ function startLoopTyping() {
         return;
       }
 
-      if (!currentSelectedModel || !currentSelectedModel.supports_vision) {
+      if (!currentSelectedModel || !currentSelectedModel.supports_video) {
         event.target.value = '';
-        showWarningModal('Model ini belum mendukung melihat video. Silakan pilih model lain yang mendukung Vision terlebih dahulu.', 'Vision Belum Didukung');
+        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Pilih model yang Supports Video-nya aktif di Admin Control.', 'Video Tidak Didukung');
         return;
       }
 
@@ -3865,11 +3865,19 @@ function startLoopTyping() {
     }
 
     function mediaVisionAllowed(kind) {
+      if (kind === 'video') {
+        if (!currentSelectedModel || !currentSelectedModel.supports_video) {
+          showWarningModal(
+            'Model yang dipilih belum mendukung pengiriman video. Pilih model yang Supports Video-nya aktif di Admin Control.',
+            'Video Tidak Didukung'
+          );
+          return false;
+        }
+        return true;
+      }
       if (!currentSelectedModel || !currentSelectedModel.supports_vision) {
         showWarningModal(
-          kind === 'video'
-            ? 'Model ini belum mendukung melihat video. Silakan pilih model yang mendukung Vision terlebih dahulu.'
-            : 'Model ini belum mendukung melihat foto. Silakan pilih model yang mendukung Vision terlebih dahulu.',
+          'Model ini belum mendukung melihat foto. Silakan pilih model yang Supports Vision-nya aktif di Admin Control.',
           'Vision Belum Didukung'
         );
         return false;
@@ -3928,12 +3936,12 @@ function startLoopTyping() {
         showPremiumLockedInfo();
         return;
       }
-      if ((hasImage || hasVideo) && !currentSelectedModel.supports_vision) {
-        showWarningModal('Model ini belum mendukung fitur Vision, jadi belum bisa melihat atau membaca foto/video yang kamu kirim. Silakan pilih model lain yang mendukung Vision.', 'Vision Belum Didukung');
+      if (hasImage && !currentSelectedModel.supports_vision) {
+        showWarningModal('Model ini belum mendukung fitur Vision, jadi belum bisa melihat foto yang kamu kirim. Silakan pilih model lain yang Supports Vision-nya aktif.', 'Vision Belum Didukung');
         return;
       }
-      if (hasVideo && String(currentSelectedModel.provider).toLowerCase() !== 'gemini') {
-        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Gunakan model Glux QSL 9 Express yang mendukung Vision untuk mengirim video.', 'Video Tidak Didukung');
+      if (hasVideo && !currentSelectedModel.supports_video) {
+        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Pilih model yang Supports Video-nya aktif di Admin Control.', 'Video Tidak Didukung');
         return;
       }
 
@@ -4066,20 +4074,28 @@ function startLoopTyping() {
     async function callOpenAICompatible(modelConfig, history, signal, onAttempt) {
       // AI cuma diingatkan 3 obrolan (pesan kamu + balasan AI) paling akhir, sisanya "dilupakan".
       const trimmedHistory = trimHistoryToLastTurns(history, 3);
+      // Kalau model saat ini TIDAK support vision, jangan kirim image dari riwayat chat.
+      // Ini yang bikin error saat ganti dari model vision ke model non-vision di chat yang sama.
+      const allowVision = !!modelConfig.supports_vision;
       const messages = [
         { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Matematika langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat aplikasi: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.' },
         { role: 'system', content: getModeStyleInstruction() },
         ...trimmedHistory.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
           const textContent = msg.text || '';
-          const images = Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []);
+          // Video tidak dikirim lewat OpenAI-compatible path (hanya Gemini).
+          // Image dari riwayat hanya dikirim jika model support vision.
+          const images = allowVision
+            ? (Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []))
+            : [];
           if (images.length) {
             const content = [];
             if (textContent) content.push({ type: 'text', text: textContent });
             images.forEach(image => content.push({ type: 'image_url', image_url: { url: image } }));
             return { role, content };
           }
-          return { role, content: textContent };
+          // Kalau ada video di riwayat tapi model non-video, cukup kirim teksnya saja.
+          return { role, content: textContent || (msg.video ? '(user mengirim video sebelumnya)' : '') };
         })
       ];
       return await callWithKeyFallback(modelConfig, async (apiKey) => {
