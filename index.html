@@ -4758,6 +4758,8 @@ function startLoopTyping() {
       voiceModeActive = false;
       voiceModeSpeaking = false;
       voiceModeProcessing = false;
+      voiceModeCooldownUntil = 0;
+      voiceModeLastSent = '';
       stopAllSpeech();
       // Kembalikan suara sistem & lepas audio focus
       setNativeVoiceMode(false);
@@ -4786,6 +4788,8 @@ function startLoopTyping() {
     }
 
     let voiceModeProcessing = false; // true saat lagi kirim ke AI / tunggu balasan
+    let voiceModeCooldownUntil = 0;  // timestamp: jangan dengar dulu setelah AI bicara (hindari echo)
+    let voiceModeLastSent = '';      // cegah kirim teks yang sama berulang
 
     function stopVoiceRecognitionClean() {
       if (!voiceModeRecognition) return;
@@ -4798,97 +4802,111 @@ function startLoopTyping() {
       voiceModeRecognition = null;
     }
 
+    function normalizeVoiceText(t) {
+      return String(t || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    // Sama-sama / hampir sama? (cegah spam "400 400 400")
+    function isDuplicateVoiceText(a, b) {
+      a = normalizeVoiceText(a).toLowerCase();
+      b = normalizeVoiceText(b).toLowerCase();
+      if (!a || !b) return false;
+      if (a === b) return true;
+      // kalau yang baru cuma pengulangan kata dari yang lama
+      if (a.length >= 6 && b.includes(a)) return true;
+      if (b.length >= 6 && a.includes(b)) return true;
+      return false;
+    }
+
     function startVoiceModeListening() {
       if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking || voiceModeProcessing) return;
+      if (Date.now() < voiceModeCooldownUntil) {
+        setTimeout(() => startVoiceModeListening(), Math.max(200, voiceModeCooldownUntil - Date.now()));
+        return;
+      }
       const SpeechRecognitionAPI = getSpeechRecognitionAPI();
       if (!SpeechRecognitionAPI) return;
 
-      // Sudah ada sesi aktif → jangan start ulang (mic tetap nyala)
+      // Sudah ada sesi aktif → jangan dobel
       if (voiceModeRecognition) return;
 
       const rec = new SpeechRecognitionAPI();
       rec.lang = 'id-ID';
-      rec.continuous = true;
+      // continuous=false lebih stabil di Android WebView:
+      // 1 ucapan = 1 hasil, tidak nge-spam / nge-duplikat seperti continuous=true
+      rec.continuous = false;
       rec.interimResults = true;
+      rec.maxAlternatives = 1;
 
-      let committedText = '';
-      let interimText = '';
-      let silenceTimer = null;
-      const SILENCE_MS = 1400;
+      let bestText = '';
+      let sent = false;
 
-      function clearSilenceTimer() {
-        if (silenceTimer) {
-          clearTimeout(silenceTimer);
-          silenceTimer = null;
-        }
-      }
-
-      function getBestText() {
-        return (committedText + ' ' + interimText).replace(/\s+/g, ' ').trim();
-      }
-
-      function flushAndSend() {
-        clearSilenceTimer();
-        const text = getBestText();
-        committedText = '';
-        interimText = '';
-        if (!text) return;
+      function maybeSend(text) {
+        if (sent) return;
+        text = normalizeVoiceText(text);
+        if (!text || text.length < 2) return;
         if (!voiceModeActive || voiceModeSpeaking || voiceModeMuted || voiceModeProcessing) return;
-
+        // Abaikan duplikat dari pengiriman sebelumnya
+        if (isDuplicateVoiceText(text, voiceModeLastSent)) {
+          return;
+        }
+        sent = true;
         stopVoiceRecognitionClean();
+        voiceModeLastSent = text;
         voiceModeSendToAI(text);
       }
 
       rec.onresult = (event) => {
-        if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking || voiceModeProcessing) return;
+        if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking || voiceModeProcessing || sent) return;
 
-        interimText = '';
+        let interim = '';
+        let finalText = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           const piece = (result[0] && result[0].transcript) ? result[0].transcript : '';
           if (!piece) continue;
-          if (result.isFinal) {
-            committedText += piece + ' ';
-          } else {
-            interimText += piece;
-          }
+          if (result.isFinal) finalText += piece + ' ';
+          else interim += piece;
         }
+        finalText = normalizeVoiceText(finalText);
+        interim = normalizeVoiceText(interim);
+        if (finalText) bestText = finalText;
+        else if (interim) bestText = interim;
 
-        // Android sering hanya kirim interim — timer diam harus jalan juga dari interim
-        clearSilenceTimer();
-        if (getBestText()) {
-          silenceTimer = setTimeout(flushAndSend, SILENCE_MS);
+        // Kalau sudah final → langsung kirim (satu kali)
+        if (finalText) {
+          maybeSend(finalText);
         }
       };
 
       rec.onerror = (event) => {
-        clearSilenceTimer();
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           showWarningModal('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.', 'Izin Mikrofon Ditolak');
           closeVoiceMode();
           return;
         }
+        // no-speech / aborted → restart halus, jangan spam
         if (voiceModeRecognition === rec) voiceModeRecognition = null;
-        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing) {
-          setTimeout(() => startVoiceModeListening(), 450);
+        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing && !sent) {
+          setTimeout(() => startVoiceModeListening(), 400);
         }
       };
 
       rec.onend = () => {
-        clearSilenceTimer();
         if (voiceModeRecognition !== rec) return;
         voiceModeRecognition = null;
 
-        const leftover = getBestText();
-        if (leftover && voiceModeActive && !voiceModeSpeaking && !voiceModeMuted && !voiceModeProcessing) {
-          committedText = '';
-          interimText = '';
-          voiceModeSendToAI(leftover);
+        // Kalau ada teks tapi belum sempat isFinal, kirim dari bestText
+        if (!sent && bestText) {
+          maybeSend(bestText);
           return;
         }
 
-        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing) {
-          setTimeout(() => startVoiceModeListening(), 300);
+        // Siap dengar ucapan berikutnya
+        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && !voiceModeProcessing && !sent) {
+          setTimeout(() => startVoiceModeListening(), 280);
         }
       };
 
@@ -4910,7 +4928,7 @@ function startLoopTyping() {
 
     async function voiceModeSendToAI(text) {
       if (!voiceModeActive) return;
-      text = String(text || '').trim();
+      text = normalizeVoiceText(text);
       if (!text) {
         startVoiceModeListening();
         return;
@@ -5037,11 +5055,14 @@ function startLoopTyping() {
       const clean = text.replace(/[*_#`>~]/g, '').replace(/\n{2,}/g, '. ');
 
       stopAllSpeech();
+      stopVoiceRecognitionClean(); // pastikan mic mati total saat AI bicara
       voiceModeSpeaking = true;
       setVoiceModeStatus('Berbicara...', 'speaking');
 
       const finishSpeaking = () => {
         voiceModeSpeaking = false;
+        // Cooldown 1.2s biar mic tidak ikut menelan sisa suara TTS / echo
+        voiceModeCooldownUntil = Date.now() + 1200;
         if (voiceModeActive && !voiceModeMuted) startVoiceModeListening();
       };
 
