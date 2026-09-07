@@ -3772,9 +3772,9 @@ function startLoopTyping() {
         return;
       }
 
-      if (!currentSelectedModel || !currentSelectedModel.supports_video) {
+      if (!currentSelectedModel || !currentSelectedModel.supports_vision) {
         event.target.value = '';
-        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Pilih model yang Supports Video-nya aktif di Admin Control (biasanya Gemini).', 'Video Tidak Didukung');
+        showWarningModal('Model ini belum mendukung melihat video. Silakan pilih model lain yang mendukung Vision terlebih dahulu.', 'Vision Belum Didukung');
         return;
       }
 
@@ -3784,9 +3784,9 @@ function startLoopTyping() {
         return;
       }
 
-      const maxVideoSize = 12 * 1024 * 1024;
+      const maxVideoSize = 50 * 1024 * 1024;
       if (file.size > maxVideoSize) {
-        showWarningModal('Video terlalu besar. Untuk upload langsung, gunakan video maksimal sekitar 10–12 MB agar tidak timeout.', 'Video Terlalu Besar');
+        showWarningModal('Video terlalu besar. Untuk upload langsung dari browser, gunakan video maksimal 20 MB.', 'Video Terlalu Besar');
         event.target.value = '';
         return;
       }
@@ -3865,19 +3865,11 @@ function startLoopTyping() {
     }
 
     function mediaVisionAllowed(kind) {
-      if (kind === 'video') {
-        if (!currentSelectedModel || !currentSelectedModel.supports_video) {
-          showWarningModal(
-            'Model yang dipilih belum mendukung pengiriman video. Pilih model yang Supports Video-nya aktif di Admin Control (biasanya Gemini).',
-            'Video Tidak Didukung'
-          );
-          return false;
-        }
-        return true;
-      }
       if (!currentSelectedModel || !currentSelectedModel.supports_vision) {
         showWarningModal(
-          'Model ini belum mendukung melihat foto. Silakan pilih model yang Supports Vision-nya aktif di Admin Control.',
+          kind === 'video'
+            ? 'Model ini belum mendukung melihat video. Silakan pilih model yang mendukung Vision terlebih dahulu.'
+            : 'Model ini belum mendukung melihat foto. Silakan pilih model yang mendukung Vision terlebih dahulu.',
           'Vision Belum Didukung'
         );
         return false;
@@ -3936,16 +3928,12 @@ function startLoopTyping() {
         showPremiumLockedInfo();
         return;
       }
-      if (hasImage && !currentSelectedModel.supports_vision) {
-        showWarningModal('Model ini belum mendukung fitur Vision, jadi belum bisa melihat foto yang kamu kirim. Silakan pilih model lain yang Supports Vision-nya aktif.', 'Vision Belum Didukung');
+      if ((hasImage || hasVideo) && !currentSelectedModel.supports_vision) {
+        showWarningModal('Model ini belum mendukung fitur Vision, jadi belum bisa melihat atau membaca foto/video yang kamu kirim. Silakan pilih model lain yang mendukung Vision.', 'Vision Belum Didukung');
         return;
       }
       if (hasVideo && !currentSelectedModel.supports_video) {
-        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Pilih model yang Supports Video-nya aktif di Admin Control (biasanya Gemini).', 'Video Tidak Didukung');
-        return;
-      }
-      if (hasVideo && String(currentSelectedModel.provider).toLowerCase() !== 'gemini') {
-        showWarningModal('Pengiriman video saat ini hanya stabil lewat provider Gemini. Model OpenRouter/Groq biasanya hanya membaca foto, bukan file video.', 'Video Tidak Didukung');
+        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Silakan pilih model lain yang mendukung Video.', 'Video Tidak Didukung');
         return;
       }
 
@@ -3996,15 +3984,7 @@ function startLoopTyping() {
       } catch (error) {
         if (error.name !== 'AbortError') {
           console.error('[AI] Gagal mendapat balasan:', error.message);
-          const msg = String(error.message || '');
-          if (/timeout|terlalu besar|tidak mengembalikan teks/i.test(msg)) {
-            appendMessage('ai', msg);
-          } else {
-            appendMessage('ai', 'Server sedang mengalami gangguan. Mohon coba kembali beberapa saat lagi.');
-          }
-        } else {
-          // user cancel / timeout via AbortController
-          appendMessage('ai', 'Permintaan dibatalkan atau timeout. Coba lagi.');
+          appendMessage('ai', 'Server sedang mengalami gangguan. Mohon coba kembali beberapa saat lagi.');
         }
       } finally {
         removeThinking();
@@ -4049,54 +4029,29 @@ function startLoopTyping() {
       if (prompt) parts.push({ text: prompt });
 
       const mediaList = Array.isArray(mediaData) ? mediaData : (mediaData ? [mediaData] : []);
-      let totalInlineBytes = 0;
       for (const item of mediaList) {
         const mimeMatch = String(item).match(/^data:([^;]+);base64,/);
         const mimeType = mediaMime || (mimeMatch ? mimeMatch[1] : null);
         const data = String(item).includes(',') ? String(item).split(',')[1] : item;
         if (!mimeType) throw new Error('MIME type media tidak ditemukan.');
-        totalInlineBytes += Math.floor(String(data).length * 0.75);
         parts.push({ inline_data: { mime_type: mimeType, data } });
-      }
-      // Inline video besar sering bikin request hang / stuck di "AI sedang berpikir".
-      if (mediaKind === 'video' && totalInlineBytes > 12 * 1024 * 1024) {
-        throw new Error('Video terlalu besar untuk dikirim langsung. Coba video lebih pendek / kompres di bawah ~10 MB.');
       }
       if (!parts.length) parts.push({ text: '(pesan kosong)' });
 
-      const timeoutMs = mediaKind === 'video' ? 120000 : 60000;
-
       return await callWithKeyFallback(modelConfig, async (apiKey) => {
-        const { signal: timedSignal, cleanup } = withTimeoutSignal(signal, timeoutMs);
-        try {
-          const url = `${endpoint}/${modelId}:generateContent?key=` + encodeURIComponent(apiKey);
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: timedSignal,
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: 'ATURAN: Jawab sesuai pertanyaan user, jangan belok topik. Hitungan langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.\n\n' + getModeStyleInstruction() }] },
-              contents: [{ role: 'user', parts }]
-            })
-          });
-          const json = await response.json();
-          if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
-          const textOut = json?.candidates?.[0]?.content?.parts?.filter(p => typeof p.text === 'string')?.map(p => p.text)?.join('') || '';
-          if (!textOut) {
-            const reason = json?.candidates?.[0]?.finishReason || json?.promptFeedback?.blockReason || 'empty';
-            throw new Error('Gemini tidak mengembalikan teks (' + reason + '). Coba video lebih pendek atau model lain.');
-          }
-          return textOut;
-        } catch (err) {
-          if (err && err.name === 'AbortError') {
-            throw new Error(mediaKind === 'video'
-              ? 'Request video timeout. Coba video lebih pendek (di bawah 10 MB) atau jaringan lebih stabil.'
-              : 'Request timeout. Coba lagi beberapa saat.');
-          }
-          throw err;
-        } finally {
-          cleanup();
-        }
+        const url = `${endpoint}/${modelId}:generateContent?key=` + encodeURIComponent(apiKey);
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal,
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: 'ATURAN: Jawab sesuai pertanyaan user, jangan belok topik. Hitungan langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.\n\n' + getModeStyleInstruction() }] },
+            contents: [{ role: 'user', parts }]
+          })
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
+        return json?.candidates?.[0]?.content?.parts?.filter(p => typeof p.text === 'string')?.map(p => p.text)?.join('') || '';
       }, onAttempt);
     }
 
@@ -4117,38 +4072,46 @@ function startLoopTyping() {
         ...trimmedHistory.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
           const textContent = msg.text || '';
-          const images = (modelConfig.supports_vision)
+          // Cuma sertakan gambar dari histori kalau MODEL YANG SEKARANG DIPAKAI juga
+          // mendukung Vision. Ini penting kalau user kirim foto ke model vision, lalu
+          // pindah ke model yang tidak dukung vision di tengah percakapan — tanpa
+          // pengecekan ini, foto lama tetap ikut terkirim ke model baru dan bikin
+          // API-nya error (model non-vision biasanya nolak content berupa array/gambar).
+          const images = modelConfig.supports_vision
             ? (Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []))
             : [];
-          if (images.length) {
+          // Video dikirim pakai content type "video_url" (format yang dipakai OpenRouter
+          // untuk model yang mendukung video input). Cuma disertakan kalau model diaktifkan
+          // Vision DAN Video di Admin Control — Groq belum ada dukungan video di API-nya
+          // sama sekali, jadi kalau providernya Groq video otomatis tidak pernah disertakan.
+          const video = (modelConfig.supports_vision && modelConfig.supports_video && msg.video) ? msg.video : null;
+          if (images.length || video) {
             const content = [];
             if (textContent) content.push({ type: 'text', text: textContent });
             images.forEach(image => content.push({ type: 'image_url', image_url: { url: image } }));
+            if (video) content.push({ type: 'video_url', video_url: { url: video } });
             return { role, content };
           }
-          return { role, content: textContent || (msg.video ? '(user mengirim video sebelumnya)' : '') };
+          // Kalau pesan lama sebenarnya berisi foto/video tapi jadi "dibuang" (karena
+          // model sekarang tidak vision, atau vision-nya nyala tapi video-nya tidak),
+          // jangan kirim content kosong (beberapa provider error kalau content-nya
+          // string kosong) — kasih catatan teks singkat sebagai gantinya.
+          if (!textContent && (msg.mediaKind === 'image' || msg.mediaKind === 'video')) {
+            return { role, content: '[Melampirkan media]' };
+          }
+          return { role, content: textContent };
         })
       ];
       return await callWithKeyFallback(modelConfig, async (apiKey) => {
-        const { signal: timedSignal, cleanup } = withTimeoutSignal(signal, 60000);
-        try {
-          const response = await fetch(modelConfig.endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            signal: timedSignal,
-            body: JSON.stringify({ model: modelConfig.model_id, messages })
-          });
-          const json = await response.json();
-          if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
-          return json?.choices?.[0]?.message?.content || '';
-        } catch (err) {
-          if (err && err.name === 'AbortError') {
-            throw new Error('Request timeout. Coba lagi beberapa saat.');
-          }
-          throw err;
-        } finally {
-          cleanup();
-        }
+        const response = await fetch(modelConfig.endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          signal,
+          body: JSON.stringify({ model: modelConfig.model_id, messages })
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
+        return json?.choices?.[0]?.message?.content || '';
       }, onAttempt);
     }
 
