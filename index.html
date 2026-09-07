@@ -4650,6 +4650,91 @@ function startLoopTyping() {
     let voiceModeMuted = false;
     let voiceModeSpeaking = false;
     let voiceModeRecognition = null;
+    let voiceModeSilentCtx = null;
+    let voiceModeSilentOsc = null;
+
+    // Coba ambil audio focus + minta native app mematikan beep sistem (mic on/off).
+    // Beep "tik" / "beep" saat SpeechRecognition start biasanya dari OS Android,
+    // web JS murni hampir tidak bisa mematikannya. Solusi terbaik = bridge native.
+    //
+    // Di sisi Android (WebView), tambahkan method di objek yang sudah di-addJavascriptInterface
+    // sebagai "AndroidTTS", contoh:
+    //
+    //   @JavascriptInterface
+    //   public void setVoiceMode(boolean active) {
+    //     AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+    //     if (active) {
+    //       // Simpan volume lama lalu set 0 untuk STREAM_SYSTEM / NOTIFICATION / RING
+    //       // supaya suara "beep mic" tidak terdengar.
+    //       am.setStreamVolume(AudioManager.STREAM_SYSTEM, 0, 0);
+    //       am.setStreamVolume(AudioManager.STREAM_NOTIFICATION, 0, 0);
+    //       // Opsional: minta audio focus
+    //       am.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
+    //     } else {
+    //       // Kembalikan volume ke nilai semula
+    //     }
+    //   }
+    //
+    // Atau nama method lain: muteSystemSounds(boolean), muteBeep(boolean), dll.
+    function setNativeVoiceMode(active) {
+      try {
+        if (window.AndroidTTS) {
+          if (typeof window.AndroidTTS.setVoiceMode === 'function') {
+            window.AndroidTTS.setVoiceMode(!!active);
+            return;
+          }
+          if (typeof window.AndroidTTS.muteSystemSounds === 'function') {
+            window.AndroidTTS.muteSystemSounds(!!active);
+            return;
+          }
+          if (typeof window.AndroidTTS.muteBeep === 'function') {
+            window.AndroidTTS.muteBeep(!!active);
+            return;
+          }
+          if (typeof window.AndroidTTS.setMuteBeep === 'function') {
+            window.AndroidTTS.setMuteBeep(!!active);
+            return;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Workaround web: buat AudioContext + oscillator hampir-senyap agar browser
+    // / WebView lebih cenderung memegang audio focus. Tidak menjamin hilangkan
+    // beep sistem, tapi kadang membantu mengurangi suara UI di beberapa perangkat.
+    function startSilentAudioFocus() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!voiceModeSilentCtx) {
+          voiceModeSilentCtx = new AC();
+          const osc = voiceModeSilentCtx.createOscillator();
+          const gain = voiceModeSilentCtx.createGain();
+          gain.gain.value = 0.00001; // praktis tidak terdengar
+          osc.frequency.value = 20;
+          osc.connect(gain);
+          gain.connect(voiceModeSilentCtx.destination);
+          osc.start();
+          voiceModeSilentOsc = osc;
+        }
+        if (voiceModeSilentCtx.state === 'suspended') {
+          voiceModeSilentCtx.resume().catch(() => {});
+        }
+      } catch (_) {}
+    }
+
+    function stopSilentAudioFocus() {
+      try {
+        if (voiceModeSilentOsc) {
+          try { voiceModeSilentOsc.stop(); } catch (_) {}
+          voiceModeSilentOsc = null;
+        }
+        if (voiceModeSilentCtx) {
+          try { voiceModeSilentCtx.close(); } catch (_) {}
+          voiceModeSilentCtx = null;
+        }
+      } catch (_) {}
+    }
 
     function openVoiceMode() {
       if (!getSpeechRecognitionAPI()) {
@@ -4662,6 +4747,9 @@ function startLoopTyping() {
       voiceModeActive = true;
       voiceModeMuted = false;
       updateVoiceModeMuteButton();
+      // Matikan beep sistem (via native bridge) + ambil audio focus
+      setNativeVoiceMode(true);
+      startSilentAudioFocus();
       overlay.classList.add('show');
       startVoiceModeListening();
     }
@@ -4670,10 +4758,19 @@ function startLoopTyping() {
       voiceModeActive = false;
       voiceModeSpeaking = false;
       stopAllSpeech();
+      // Kembalikan suara sistem & lepas audio focus
+      setNativeVoiceMode(false);
+      stopSilentAudioFocus();
       const overlay = document.getElementById('voiceModeOverlay');
       if (overlay) overlay.classList.remove('show', 'listening', 'speaking');
       if (voiceModeRecognition) {
-        try { voiceModeRecognition.onend = null; voiceModeRecognition.stop(); } catch (_) {}
+        try {
+          voiceModeRecognition.onend = null;
+          voiceModeRecognition.onresult = null;
+          voiceModeRecognition.onerror = null;
+          voiceModeRecognition.stop();
+        } catch (_) {}
+        voiceModeRecognition = null;
       }
     }
 
@@ -4692,58 +4789,119 @@ function startLoopTyping() {
       const SpeechRecognitionAPI = getSpeechRecognitionAPI();
       if (!SpeechRecognitionAPI) return;
 
+      // Kalau sudah ada sesi recognition yang masih hidup, jangan buat yang baru
+      // (biar mic tidak nyala-mati berulang).
       if (voiceModeRecognition) {
-        try { voiceModeRecognition.onend = null; voiceModeRecognition.stop(); } catch (_) {}
+        try {
+          if (voiceModeRecognition._isRunning) return;
+        } catch (_) {}
+      }
+
+      // Hentikan sesi lama dengan bersih sebelum start ulang (hanya jika perlu)
+      if (voiceModeRecognition) {
+        try {
+          voiceModeRecognition.onend = null;
+          voiceModeRecognition.onresult = null;
+          voiceModeRecognition.onerror = null;
+          voiceModeRecognition.stop();
+        } catch (_) {}
+        voiceModeRecognition = null;
       }
 
       const rec = new SpeechRecognitionAPI();
       rec.lang = 'id-ID';
-      rec.continuous = false;
-      rec.interimResults = false;
+      // continuous = true → mic tetap aktif, tidak mati tiap selesai 1 kalimat
+      rec.continuous = true;
+      // interimResults = true biar bisa deteksi akhir ucapan lebih cepat
+      rec.interimResults = true;
 
-      let handled = false; // biar onend di bawah gak ikut restart dobel kalau onresult/onerror udah nanganin
+      let finalBuffer = '';
+      let silenceTimer = null;
+      const SILENCE_MS = 1200; // setelah 1.2 detik tidak ada hasil baru → anggap selesai bicara
+
+      function clearSilenceTimer() {
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+      }
+
+      function flushAndSend() {
+        clearSilenceTimer();
+        const text = finalBuffer.trim();
+        finalBuffer = '';
+        if (text && voiceModeActive && !voiceModeSpeaking && !voiceModeMuted) {
+          // Hentikan recognition dulu supaya tidak menangkap suara AI sendiri
+          try {
+            rec.onend = null;
+            rec.stop();
+          } catch (_) {}
+          voiceModeRecognition = null;
+          voiceModeSendToAI(text);
+        }
+      }
 
       rec.onresult = (event) => {
-        handled = true;
-        let transcript = '';
+        if (!voiceModeActive || voiceModeMuted || voiceModeSpeaking) return;
+
+        let gotFinal = false;
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
+          const result = event.results[i];
+          const piece = (result[0] && result[0].transcript) ? result[0].transcript : '';
+          if (result.isFinal) {
+            finalBuffer += piece + ' ';
+            gotFinal = true;
+          }
         }
-        transcript = transcript.trim();
-        if (transcript) {
-          voiceModeSendToAI(transcript);
-        } else if (voiceModeActive) {
-          startVoiceModeListening();
+
+        // Setiap ada hasil (final), reset timer diam
+        clearSilenceTimer();
+        if (gotFinal || finalBuffer.trim()) {
+          silenceTimer = setTimeout(flushAndSend, SILENCE_MS);
         }
       };
 
       rec.onerror = (event) => {
-        handled = true;
+        clearSilenceTimer();
+        // error "no-speech" / "aborted" sering muncul di continuous mode, jangan panik
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           showWarningModal('Izin mikrofon ditolak. Aktifkan izin mikrofon untuk browser/app ini di pengaturan HP.', 'Izin Mikrofon Ditolak');
           closeVoiceMode();
           return;
         }
-        if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking) {
-          setTimeout(() => startVoiceModeListening(), 400);
+        // Restart hanya jika sesi ini masih yang aktif & mode masih listening
+        if (voiceModeRecognition === rec && voiceModeActive && !voiceModeMuted && !voiceModeSpeaking) {
+          voiceModeRecognition = null;
+          setTimeout(() => startVoiceModeListening(), 500);
         }
       };
 
-      // Sebagian browser/WebView langsung munculin "end" pas didiemin lama,
-      // tanpa lewat onresult/onerror dulu. Kalau dibiarkan, mic jadi kerasa
-      // "mati sendiri". Jadi kalau itu terjadi & sesi ini masih yang aktif
-      // (belum digantikan sesi baru), dengerin lagi otomatis.
       rec.onend = () => {
-        if (handled) return;
+        clearSilenceTimer();
+        // Continuous mode kadang tetap memicu onend (terutama di Android WebView).
+        // Restart HANYA jika masih di mode listening dan belum diganti sesi baru.
         if (voiceModeRecognition !== rec) return;
+        voiceModeRecognition = null;
         if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking) {
-          setTimeout(() => startVoiceModeListening(), 300);
+          setTimeout(() => startVoiceModeListening(), 350);
         }
       };
 
+      rec._isRunning = true;
       voiceModeRecognition = rec;
       setVoiceModeStatus('Mendengarkan...', 'listening');
-      try { rec.start(); } catch (_) {}
+      setNativeVoiceMode(true);
+      startSilentAudioFocus();
+      try {
+        rec.start();
+      } catch (_) {
+        // start() bisa gagal kalau dipanggil terlalu cepat; coba lagi sebentar
+        setTimeout(() => {
+          if (voiceModeActive && !voiceModeMuted && !voiceModeSpeaking && voiceModeRecognition === rec) {
+            try { rec.start(); } catch (__) {}
+          }
+        }, 400);
+      }
     }
 
     async function voiceModeSendToAI(text) {
