@@ -4689,26 +4689,34 @@ function startLoopTyping() {
     //
     // Atau nama method lain: muteSystemSounds(boolean), muteBeep(boolean), dll.
     function setNativeVoiceMode(active) {
+      // Panggil bridge native Android (nama interface: "AndroidTTS")
+      // Method yang didukung: setVoiceMode / muteSystemSounds / muteBeep / setMuteBeep
       try {
-        if (window.AndroidTTS) {
-          if (typeof window.AndroidTTS.setVoiceMode === 'function') {
-            window.AndroidTTS.setVoiceMode(!!active);
-            return;
-          }
-          if (typeof window.AndroidTTS.muteSystemSounds === 'function') {
-            window.AndroidTTS.muteSystemSounds(!!active);
-            return;
-          }
-          if (typeof window.AndroidTTS.muteBeep === 'function') {
-            window.AndroidTTS.muteBeep(!!active);
-            return;
-          }
-          if (typeof window.AndroidTTS.setMuteBeep === 'function') {
-            window.AndroidTTS.setMuteBeep(!!active);
-            return;
-          }
+        if (!window.AndroidTTS) {
+          console.warn('[VoiceMode] AndroidTTS bridge tidak ditemukan');
+          return false;
         }
-      } catch (_) {}
+        if (typeof window.AndroidTTS.setVoiceMode === 'function') {
+          window.AndroidTTS.setVoiceMode(!!active);
+          return true;
+        }
+        if (typeof window.AndroidTTS.muteSystemSounds === 'function') {
+          window.AndroidTTS.muteSystemSounds(!!active);
+          return true;
+        }
+        if (typeof window.AndroidTTS.muteBeep === 'function') {
+          window.AndroidTTS.muteBeep(!!active);
+          return true;
+        }
+        if (typeof window.AndroidTTS.setMuteBeep === 'function') {
+          window.AndroidTTS.setMuteBeep(!!active);
+          return true;
+        }
+        console.warn('[VoiceMode] AndroidTTS ada, tapi method setVoiceMode tidak ketemu');
+      } catch (e) {
+        console.warn('[VoiceMode] gagal panggil native:', e);
+      }
+      return false;
     }
 
     // Workaround web: buat AudioContext + oscillator hampir-senyap agar browser
@@ -4762,10 +4770,14 @@ function startLoopTyping() {
       voiceModeCooldownUntil = 0;
       voiceModeLastSent = '';
       updateVoiceModeMuteButton();
+      // MUTE DULU sebelum mic start (penting biar beep sistem tidak keburu bunyi)
       setNativeVoiceMode(true);
       startSilentAudioFocus();
       overlay.classList.add('show');
-      startVoiceModeListening();
+      // beri jeda singkat supaya native sempat set volume = 0 sebelum SpeechRecognition start
+      setTimeout(() => {
+        if (voiceModeActive && !voiceModeMuted) startVoiceModeListening();
+      }, 80);
     }
 
     function closeVoiceMode() {
