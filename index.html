@@ -3932,8 +3932,8 @@ function startLoopTyping() {
         showWarningModal('Model ini belum mendukung fitur Vision, jadi belum bisa melihat atau membaca foto/video yang kamu kirim. Silakan pilih model lain yang mendukung Vision.', 'Vision Belum Didukung');
         return;
       }
-      if (hasVideo && !currentSelectedModel.supports_video) {
-        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Silakan pilih model lain yang mendukung Video.', 'Video Tidak Didukung');
+      if (hasVideo && String(currentSelectedModel.provider).toLowerCase() !== 'gemini') {
+        showWarningModal('Model yang dipilih belum mendukung pengiriman video. Gunakan model Glux QSL 9 Express yang mendukung Vision untuk mengirim video.', 'Video Tidak Didukung');
         return;
       }
 
@@ -4066,38 +4066,38 @@ function startLoopTyping() {
     async function callOpenAICompatible(modelConfig, history, signal, onAttempt) {
       // AI cuma diingatkan 3 obrolan (pesan kamu + balasan AI) paling akhir, sisanya "dilupakan".
       const trimmedHistory = trimHistoryToLastTurns(history, 3);
+      // PENTING: modelConfig di sini adalah model yang SEDANG dipakai sekarang.
+      // Kalau model sekarang belum mendukung Vision, gambar/video dari pesan
+      // LAMA (yang tadinya dikirim saat model lain yang vision masih aktif)
+      // tidak boleh ikut dikirim ke API-nya — banyak provider langsung menolak
+      // request berisi content bertipe image_url kalau modelnya bukan model
+      // vision, dan itu yang bikin error "Server sedang mengalami gangguan"
+      // waktu ganti model di tengah chat yang sama (padahal di new chat normal
+      // karena riwayatnya masih kosong).
+      const modelSupportsVision = !!modelConfig.supports_vision;
       const messages = [
         { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Matematika langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat aplikasi: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.' },
         { role: 'system', content: getModeStyleInstruction() },
         ...trimmedHistory.map(msg => {
           const role = msg.role === 'assistant' ? 'assistant' : 'user';
-          const textContent = msg.text || '';
-          // Cuma sertakan gambar dari histori kalau MODEL YANG SEKARANG DIPAKAI juga
-          // mendukung Vision. Ini penting kalau user kirim foto ke model vision, lalu
-          // pindah ke model yang tidak dukung vision di tengah percakapan — tanpa
-          // pengecekan ini, foto lama tetap ikut terkirim ke model baru dan bikin
-          // API-nya error (model non-vision biasanya nolak content berupa array/gambar).
-          const images = modelConfig.supports_vision
-            ? (Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []))
-            : [];
-          // Video dikirim pakai content type "video_url" (format yang dipakai OpenRouter
-          // untuk model yang mendukung video input). Cuma disertakan kalau model diaktifkan
-          // Vision DAN Video di Admin Control — Groq belum ada dukungan video di API-nya
-          // sama sekali, jadi kalau providernya Groq video otomatis tidak pernah disertakan.
-          const video = (modelConfig.supports_vision && modelConfig.supports_video && msg.video) ? msg.video : null;
-          if (images.length || video) {
+          let textContent = msg.text || '';
+          const images = Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []);
+
+          if (!modelSupportsVision) {
+            // Model sekarang tidak bisa "melihat" — jangan kirim base64/URL
+            // gambar sama sekali. Cukup kasih catatan teks biar konteksnya
+            // tetap nyambung tanpa bikin API-nya error.
+            if (images.length && !textContent) {
+              textContent = '[Pengguna mengirim gambar/video di pesan ini, tapi model yang sedang aktif belum mendukung Vision]';
+            }
+            return { role, content: textContent };
+          }
+
+          if (images.length) {
             const content = [];
             if (textContent) content.push({ type: 'text', text: textContent });
             images.forEach(image => content.push({ type: 'image_url', image_url: { url: image } }));
-            if (video) content.push({ type: 'video_url', video_url: { url: video } });
             return { role, content };
-          }
-          // Kalau pesan lama sebenarnya berisi foto/video tapi jadi "dibuang" (karena
-          // model sekarang tidak vision, atau vision-nya nyala tapi video-nya tidak),
-          // jangan kirim content kosong (beberapa provider error kalau content-nya
-          // string kosong) — kasih catatan teks singkat sebagai gantinya.
-          if (!textContent && (msg.mediaKind === 'image' || msg.mediaKind === 'video')) {
-            return { role, content: '[Melampirkan media]' };
           }
           return { role, content: textContent };
         })
