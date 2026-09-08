@@ -3984,7 +3984,12 @@ function startLoopTyping() {
       } catch (error) {
         if (error.name !== 'AbortError') {
           console.error('[AI] Gagal mendapat balasan:', error.message);
-          appendMessage('ai', 'Server sedang mengalami gangguan. Mohon coba kembali beberapa saat lagi.');
+          // Detail error asli ditampilkan sementara (mode debug) supaya penyebab
+          // pastinya kelihatan langsung di chat, bukan cuma di console yang
+          // susah diakses dari WebView Android. Hapus baris "Detail teknis"
+          // ini kalau nanti sudah rilis ke pengguna umum.
+          const detail = error && error.message ? String(error.message) : 'Tidak diketahui';
+          appendMessage('ai', `Server sedang mengalami gangguan. Mohon coba kembali beberapa saat lagi.\n\nDetail teknis: ${detail}`);
         }
       } finally {
         removeThinking();
@@ -4066,52 +4071,88 @@ function startLoopTyping() {
     async function callOpenAICompatible(modelConfig, history, signal, onAttempt) {
       // AI cuma diingatkan 3 obrolan (pesan kamu + balasan AI) paling akhir, sisanya "dilupakan".
       const trimmedHistory = trimHistoryToLastTurns(history, 3);
-      // PENTING: modelConfig di sini adalah model yang SEDANG dipakai sekarang.
-      // Kalau model sekarang belum mendukung Vision, gambar/video dari pesan
-      // LAMA (yang tadinya dikirim saat model lain yang vision masih aktif)
-      // tidak boleh ikut dikirim ke API-nya — banyak provider langsung menolak
-      // request berisi content bertipe image_url kalau modelnya bukan model
-      // vision, dan itu yang bikin error "Server sedang mengalami gangguan"
-      // waktu ganti model di tengah chat yang sama (padahal di new chat normal
-      // karena riwayatnya masih kosong).
-      const modelSupportsVision = !!modelConfig.supports_vision;
-      const messages = [
-        { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Matematika langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat aplikasi: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.' },
-        { role: 'system', content: getModeStyleInstruction() },
-        ...trimmedHistory.map(msg => {
-          const role = msg.role === 'assistant' ? 'assistant' : 'user';
-          let textContent = msg.text || '';
-          const images = Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []);
 
-          if (!modelSupportsVision) {
-            // Model sekarang tidak bisa "melihat" — jangan kirim base64/URL
-            // gambar sama sekali. Cukup kasih catatan teks biar konteksnya
-            // tetap nyambung tanpa bikin API-nya error.
-            if (images.length && !textContent) {
-              textContent = '[Pengguna mengirim gambar/video di pesan ini, tapi model yang sedang aktif belum mendukung Vision]';
+      // PENTING: modelConfig di sini adalah model yang SEDANG dipakai sekarang.
+      // includeImages=false dipakai saat: (a) model memang ditandai belum
+      // dukung Vision di Admin Control, ATAU (b) sebagai fallback kalau
+      // provider (mis. OpenRouter) menolak gambar walau modelnya ditandai
+      // Vision — supaya gambar/video dari pesan LAMA (yang tadinya dikirim
+      // saat model lain yang vision masih aktif) tidak ikut bikin request
+      // ditolak. Ini yang tadinya bikin error "Server sedang mengalami
+      // gangguan" waktu ganti model di tengah chat yang sama (padahal di new
+      // chat normal karena riwayatnya masih kosong).
+      function buildMessages(includeImages) {
+        return [
+          { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Matematika langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat aplikasi: Zain Suryo Negoro (programmer/developer). Jangan klaim dibuat Google/OpenAI/Anthropic.' },
+          { role: 'system', content: getModeStyleInstruction() },
+          ...trimmedHistory.map(msg => {
+            const role = msg.role === 'assistant' ? 'assistant' : 'user';
+            let textContent = msg.text || '';
+            const images = Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []);
+
+            if (!includeImages) {
+              // Jangan kirim base64/URL gambar sama sekali. Cukup kasih
+              // catatan teks biar konteksnya tetap nyambung tanpa bikin
+              // API-nya error.
+              if (images.length && !textContent) {
+                textContent = '[Pengguna mengirim gambar/video di pesan ini, tapi model yang sedang aktif belum bisa memprosesnya]';
+              }
+              return { role, content: textContent };
+            }
+
+            if (images.length) {
+              const content = [];
+              if (textContent) content.push({ type: 'text', text: textContent });
+              images.forEach(image => content.push({ type: 'image_url', image_url: { url: image } }));
+              return { role, content };
             }
             return { role, content: textContent };
-          }
+          })
+        ];
+      }
 
-          if (images.length) {
-            const content = [];
-            if (textContent) content.push({ type: 'text', text: textContent });
-            images.forEach(image => content.push({ type: 'image_url', image_url: { url: image } }));
-            return { role, content };
-          }
-          return { role, content: textContent };
-        })
-      ];
-      return await callWithKeyFallback(modelConfig, async (apiKey) => {
+      async function requestOnce(apiKey, includeImages) {
         const response = await fetch(modelConfig.endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
           signal,
-          body: JSON.stringify({ model: modelConfig.model_id, messages })
+          body: JSON.stringify({ model: modelConfig.model_id, messages: buildMessages(includeImages) })
         });
         const json = await response.json();
-        if (!response.ok) throw new Error(json?.error?.message || `HTTP ${response.status}`);
+        if (!response.ok) {
+          // OpenRouter kadang cuma balikin pesan generik "Provider returned
+          // error" di error.message, sedangkan alasan aslinya nyempil di
+          // error.metadata.raw. Ambil yang paling informatif duluan.
+          const detail = json?.error?.metadata?.raw || json?.error?.message || `HTTP ${response.status}`;
+          throw new Error(detail);
+        }
         return json?.choices?.[0]?.message?.content || '';
+      }
+
+      const modelSupportsVision = !!modelConfig.supports_vision;
+      const historyHasMedia = trimmedHistory.some(msg => (Array.isArray(msg.images) && msg.images.length) || msg.image);
+
+      return await callWithKeyFallback(modelConfig, async (apiKey) => {
+        try {
+          return await requestOnce(apiKey, modelSupportsVision);
+        } catch (err) {
+          // Kalau ada gambar yang ikut dikirim dan request-nya gagal — apapun
+          // alasan persisnya, karena tiap provider punya gaya pesan error
+          // sendiri-sendiri dan kadang cuma "Provider returned error" yang
+          // generik tanpa sebut kata "image" sama sekali — coba ulang SEKALI
+          // lagi tanpa gambar. Kalau tanpa gambar tetap gagal juga, error
+          // yang PERTAMA (biasanya lebih jelas alasannya) yang ditampilkan
+          // ke user, bukan error dari percobaan kedua.
+          if (modelSupportsVision && historyHasMedia) {
+            console.warn('[AI] Request dengan gambar gagal, coba ulang tanpa gambar:', err.message);
+            try {
+              return await requestOnce(apiKey, false);
+            } catch (_) {
+              throw err;
+            }
+          }
+          throw err;
+        }
       }, onAttempt);
     }
 
