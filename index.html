@@ -764,12 +764,12 @@
           
           <div class="imagine-gallery-grid">
   <article class="imagine-card">
-    <video class="imagine-card-media" src="video-tumbnail.mp4" autoplay loop muted playsinline></video>
+    <video class="imagine-card-media" src="video-tumbnail.mp4" loop muted playsinline preload="metadata"></video>
     <div class="imagine-card-label"><i class="fa-solid fa-video"></i> Contoh Video</div>
     </article>
             
   <article class="imagine-card">
-    <video class="imagine-card-media" src="video-thumbnail-2.mp4" autoplay loop muted playsinline></video>
+    <video class="imagine-card-media" src="video-thumbnail-2.mp4" loop muted playsinline preload="metadata"></video>
     <div class="imagine-card-label"><i class="fa-solid fa-video"></i> Contoh Video</div>
   </article>
             <article class="imagine-card">
@@ -782,12 +782,12 @@
   </article>         
             
   <article class="imagine-card">
-    <video class="imagine-card-media" src="video-thumbnail-3.mp4" autoplay loop muted playsinline></video>
+    <video class="imagine-card-media" src="video-thumbnail-3.mp4" loop muted playsinline preload="metadata"></video>
     <div class="imagine-card-label"><i class="fa-solid fa-video"></i> Contoh Video</div>
   </article>
             
   <article class="imagine-card">
-    <video class="imagine-card-media" src="video-thumbnail-4.mp4" autoplay loop muted playsinline></video>
+    <video class="imagine-card-media" src="video-thumbnail-4.mp4" loop muted playsinline preload="metadata"></video>
     <div class="imagine-card-label"><i class="fa-solid fa-video"></i> Contoh Video</div>
   </article>
             <article class="imagine-card">
@@ -1023,6 +1023,15 @@ let viewingOtherModels = false;
   let introFinished = false;
   let resolveIntroFinished;
   const introFinishedPromise = new Promise(resolve => { resolveIntroFinished = resolve; });
+
+  // Video contoh di tab Imagine baru mulai diputar setelah intro selesai,
+  // supaya tidak berat saat intro masih tayang.
+  function playImagineGalleryVideos() {
+    document.querySelectorAll('#imagineGallery video.imagine-card-media').forEach(v => {
+      v.play().catch(() => {});
+    });
+  }
+  introFinishedPromise.then(playImagineGalleryVideos);
 
   document.addEventListener("DOMContentLoaded", () => {
     const introContainer = document.getElementById('intro-container');
