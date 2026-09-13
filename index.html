@@ -2072,10 +2072,28 @@ let viewingOtherModels = false;
       try {
         const response = await fetch(url);
         const blob = await response.blob();
+        const fileName = `pretvfx-imagine-${Date.now()}.jpg`;
+
+        // Kalau dibuka lewat APK (WebView) yang sudah dikasih jembatan AndroidDownloader,
+        // blob: URL gak bisa dibuka DownloadManager/Intent di sisi native, jadi dikirim
+        // sebagai base64 biar disimpan langsung oleh kode Java-nya.
+        if (window.AndroidDownloader && typeof window.AndroidDownloader.saveBase64File === 'function') {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            window.AndroidDownloader.saveBase64File(reader.result, fileName);
+          };
+          reader.onerror = () => {
+            showWarningModal('Gagal mengunduh gambar. Pastikan koneksi internet stabil.', 'Gagal Mengunduh');
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+
+        // Browser biasa (bukan APK): cara lama pakai blob URL tetap jalan normal
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = blobUrl;
-        a.download = `pretvfx-imagine-${Date.now()}.jpg`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
