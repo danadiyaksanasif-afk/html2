@@ -150,7 +150,7 @@
     .action-link i { font-size: 0.82rem; }
     .feedback-btn.active { color: #a5b4fc; background: rgba(99, 102, 241, 0.15); border-color: rgba(99, 102, 241, 0.35); }
 
-    .composer-container { padding: 16px 24px 24px; width: 100%; max-width: 900px; margin: 0 auto; }
+    .composer-container { position: relative; padding: 16px 24px 24px; width: 100%; max-width: 900px; margin: 0 auto; }
     .input-box { background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 24px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.2s ease; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2); }
     .input-box:focus-within { border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
     .image-preview-wrapper { display: none; position: relative; width: 100%; margin-bottom: -4px; padding-right: 8px; }
@@ -402,8 +402,83 @@
     .imagine-mode .btn-plus { display:flex !important; }
     .imagine-mode .btn-plus::after { content:'Tambah gambar'; margin-left:7px; font-size:.72rem; font-weight:700; color:#aeb7c9; }
     @media (max-width:700px) { .imagine-mode .btn-plus::after { display:none; } }
-    .imagine-mode-btn { border:0; background:transparent; color:#8992a4; border-radius:12px; padding:7px 10px; font-size:.74rem; font-weight:700; cursor:pointer; }
-    .imagine-mode-btn.active { color:#fff; background:linear-gradient(135deg,rgba(99,102,241,.38),rgba(168,85,247,.28)); }
+    .imagine-mode-btn {
+      border: 0;
+      background: transparent;
+      color: #8992a4;
+      border-radius: 100px;
+      padding: 5px 10px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .imagine-mode-btn.active {
+      color: #fff;
+      background: linear-gradient(135deg, rgba(99,102,241,.38), rgba(168,85,247,.28));
+    }
+    /* Badge sisa limit di dalam tombol Gambar / Video */
+    .imagine-mode-btn .quota-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      background: rgba(255, 255, 255, 0.08);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      line-height: 1.35;
+    }
+    .imagine-mode-btn.active .quota-badge {
+      background: rgba(255, 255, 255, 0.16);
+      color: #e0e7ff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .imagine-mode-btn .quota-badge.exhausted {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fecaca;
+      border-color: rgba(248, 113, 113, 0.4);
+    }
+    .imagine-mode-btn .quota-badge.premium {
+      background: rgba(251, 191, 36, 0.16);
+      color: #fde68a;
+      border-color: rgba(251, 191, 36, 0.35);
+    }
+    .imagine-quota-hint {
+      display: none;
+      width: 100%;
+      margin-top: 2px;
+      padding: 0 2px;
+      font-size: 0.66rem;
+      color: #7b8499;
+      text-align: left;
+      line-height: 1.3;
+    }
+    .imagine-mode .imagine-quota-hint.show { display: block; }
+
+    /* Kartu peringatan sensitif dari owner */
+    .imagine-result.warned {
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      background: linear-gradient(145deg, rgba(40, 30, 10, 0.55), rgba(20, 16, 8, 0.65));
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .imagine-result.warned .imagine-result-icon {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      width: 42px; height: 42px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+    }
+    .imagine-result.warned .imagine-result-title { color: #fbbf24; font-weight: 700; }
+    .imagine-result.warned .imagine-result-status { color: #e5e7eb; line-height: 1.55; margin-top: 4px; }
+    .imagine-result.failed .imagine-result-status.quota-msg { color: #fca5a5; }
 
     /* =========================================
        CSS CONTOH HASIL (GAMBAR 2)
@@ -815,8 +890,12 @@
           <div class="composer-toolbar">
             <div class="toolbar-left">
               <div class="imagine-mode-switch" id="imagineModeSwitch" aria-label="Mode Imagine">
-                <button type="button" class="imagine-mode-btn active" id="imagineImageBtn" onclick="setImagineMode('IMAGE')"><i class="fa-regular fa-image"></i> Gambar</button>
-                <button type="button" class="imagine-mode-btn" id="imagineVideoBtn" onclick="setImagineMode('VIDEO')"><i class="fa-solid fa-video"></i> Video</button>
+                <button type="button" class="imagine-mode-btn active" id="imagineImageBtn" onclick="setImagineMode('IMAGE')">
+                  <i class="fa-regular fa-image"></i> Gambar <span class="quota-badge" id="quotaImageBadge">3/3</span>
+                </button>
+                <button type="button" class="imagine-mode-btn" id="imagineVideoBtn" onclick="setImagineMode('VIDEO')">
+                  <i class="fa-solid fa-video"></i> Video <span class="quota-badge" id="quotaVideoBadge">1/1</span>
+                </button>
               </div>
 
               <button class="btn-plus" onclick="handlePlusButton()" title="Tambahkan gambar">+</button>
@@ -850,6 +929,7 @@
               </button>
             </div>
           </div>
+          <div class="imagine-quota-hint" id="imagineQuotaHint"></div>
         </div>
       </div>
     </main>
@@ -1095,6 +1175,12 @@ let viewingOtherModels = false;
     let imagineBusy = false;
     let imagineHasPending = false;
 
+    // Limit free: 3 gambar + 1 video, reset otomatis tiap 3 jam. Premium tanpa batas.
+    const FREE_IMAGE_LIMIT = 5;
+    const FREE_VIDEO_LIMIT = 1;
+    const QUOTA_WINDOW_MS = 15 * 60 * 1000;
+    let quotaCache = { imageUsed: 0, videoUsed: 0, isPremium: false, nextResetAt: null };
+
     let forcedVisibleImagineIds = new Set();
     let viewingSingleImagineId = null;
 
@@ -1317,6 +1403,7 @@ let viewingOtherModels = false;
         saveSession(currentUser);
         renderAccountUI();
         renderModelList();
+        refreshImagineQuotaBar();
       } catch (error) {}
     }
 
@@ -1331,6 +1418,7 @@ let viewingOtherModels = false;
           saveSession(currentUser);
           renderAccountUI();
           renderModelList();
+          refreshImagineQuotaBar();
         })
         .subscribe();
     }
@@ -1688,6 +1776,11 @@ let viewingOtherModels = false;
       await introFinishedPromise;
 
       renderWelcomeMessage();
+      refreshImagineQuotaBar();
+      // Update countdown limit free setiap 30 detik
+      setInterval(() => {
+        if (document.body.classList.contains('imagine-mode')) refreshImagineQuotaBar();
+      }, 1000);
     });
 
     async function fetchActiveModels() {
@@ -2000,6 +2093,113 @@ let viewingOtherModels = false;
         const input = document.getElementById('promptInput');
         if (input) input.focus();
       }
+      refreshImagineQuotaBar();
+    }
+
+    function computeQuotaFromRequests() {
+      const isPremium = !!(currentUser && currentUser.is_premium);
+      if (isPremium) {
+        quotaCache = { imageUsed: 0, videoUsed: 0, isPremium: true, nextResetAt: null };
+        return quotaCache;
+      }
+
+      const now = Date.now();
+      const windowStart = now - QUOTA_WINDOW_MS;
+      let imageUsed = 0;
+      let videoUsed = 0;
+      let oldestTs = null;
+
+      for (const item of imagineRequests.values()) {
+        const st = String(item.status || '');
+        if (st === 'failed' || st === 'warned') continue;
+        const ts = new Date(item.created_at || 0).getTime();
+        if (!ts || ts < windowStart) continue;
+        const mode = String(item.mode || 'IMAGE').toUpperCase();
+        if (mode === 'VIDEO') videoUsed++;
+        else imageUsed++;
+        if (oldestTs === null || ts < oldestTs) oldestTs = ts;
+      }
+
+      const nextResetAt = oldestTs ? oldestTs + QUOTA_WINDOW_MS : null;
+      quotaCache = { imageUsed, videoUsed, isPremium: false, nextResetAt };
+      return quotaCache;
+    }
+
+    function formatQuotaCountdown(ms) {
+  if (!ms || ms <= 0) return 'segera';
+  
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  
+  // Format: 2j 15m 30d (jika ada jam), atau 15m 30d (jika tidak ada jam)
+  if (h > 0) {
+    return `${h}j ${m}m ${s}d`;
+  }
+  return `${m}m ${s}d`;
+}
+
+    function refreshImagineQuotaBar() {
+      const imgBadge = document.getElementById('quotaImageBadge');
+      const vidBadge = document.getElementById('quotaVideoBadge');
+      const hint = document.getElementById('imagineQuotaHint');
+      if (!imgBadge || !vidBadge) return;
+
+      const inImagine = document.body.classList.contains('imagine-mode');
+      imgBadge.style.display = inImagine ? '' : 'none';
+      vidBadge.style.display = inImagine ? '' : 'none';
+      if (!inImagine) {
+        if (hint) { hint.textContent = ''; hint.classList.remove('show'); }
+        return;
+      }
+
+      const q = computeQuotaFromRequests();
+
+      if (q.isPremium) {
+        imgBadge.textContent = '∞';
+        vidBadge.textContent = '∞';
+        imgBadge.classList.add('premium');
+        vidBadge.classList.add('premium');
+        imgBadge.classList.remove('exhausted');
+        vidBadge.classList.remove('exhausted');
+        if (hint) {
+          hint.textContent = 'Akun Premium · generate tanpa batas';
+          hint.classList.add('show');
+        }
+        return;
+      }
+
+      const imgRemain = Math.max(0, FREE_IMAGE_LIMIT - q.imageUsed);
+      const vidRemain = Math.max(0, FREE_VIDEO_LIMIT - q.videoUsed);
+      imgBadge.textContent = `${imgRemain}/${FREE_IMAGE_LIMIT}`;
+      vidBadge.textContent = `${vidRemain}/${FREE_VIDEO_LIMIT}`;
+      imgBadge.classList.remove('premium');
+      vidBadge.classList.remove('premium');
+      imgBadge.classList.toggle('exhausted', imgRemain <= 0);
+      vidBadge.classList.toggle('exhausted', vidRemain <= 0);
+
+      if (hint) {
+        if (q.imageUsed > 0 || q.videoUsed > 0) {
+          const left = q.nextResetAt ? q.nextResetAt - Date.now() : QUOTA_WINDOW_MS;
+          hint.textContent = `Limit free · reset dalam ${formatQuotaCountdown(left)}`;
+          hint.classList.add('show');
+        } else {
+          hint.textContent = `Limit free · ${FREE_IMAGE_LIMIT} gambar & ${FREE_VIDEO_LIMIT} video / 15 menit`;
+          hint.classList.add('show');
+        }
+      }
+    }
+
+    function getRemainingQuota(mode) {
+      const q = computeQuotaFromRequests();
+      if (q.isPremium) return { allowed: true, remaining: Infinity, isPremium: true };
+      if (mode === 'VIDEO') {
+        const remaining = Math.max(0, FREE_VIDEO_LIMIT - q.videoUsed);
+        return { allowed: remaining > 0, remaining, isPremium: false };
+      }
+      const remaining = Math.max(0, FREE_IMAGE_LIMIT - q.imageUsed);
+      return { allowed: remaining > 0, remaining, isPremium: false };
     }
 
     function getImagineFileExtension(file) {
@@ -2132,7 +2332,6 @@ let viewingOtherModels = false;
       } else {
         items = allItems
           .filter(item => {
-            if (item.status === 'queued' || item.status === 'processing') return true;
             if (forcedVisibleImagineIds.has(item.request_id)) return true;
             return false;
           })
@@ -2151,6 +2350,7 @@ let viewingOtherModels = false;
 
       imagineHasPending = allItems.some(item => item.status === 'queued' || item.status === 'processing');
       refreshImagineSendButton();
+      refreshImagineQuotaBar();
 
       if (!items.length) {
   if (isSingleView) {
@@ -2193,13 +2393,37 @@ box.innerHTML = backBarHtml + items.map(item => {
           </article>`;
         }
 
+        const warned = item.status === 'warned' || (typeof item.result_url === 'string' && item.result_url.startsWith('warn://'));
+        if (warned) {
+          let warnMsg = 'Prompt kamu mengandung konten sensitif / tidak sesuai ketentuan. Mohon ganti prompt dan coba lagi.';
+          if (typeof item.result_url === 'string' && item.result_url.startsWith('warn://')) {
+            warnMsg = item.result_url.slice('warn://'.length) || warnMsg;
+          }
+          return `<article class="imagine-result warned" data-request-id="${reqId}">
+            <div class="imagine-result-header" style="display:flex;gap:12px;align-items:flex-start;">
+              <div class="imagine-result-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+              <div>
+                <div class="imagine-result-title">Peringatan Konten Sensitif</div>
+                <div class="imagine-result-status">${escapeHtml(warnMsg)}</div>
+                <div class="imagine-result-id">${reqId}</div>
+              </div>
+            </div>
+          </article>`;
+        }
+
         if (failed) {
+          let failMsg = 'Maaf, permintaan gagal diproses. Silakan coba lagi.';
+          let isQuota = false;
+          if (typeof item.result_url === 'string' && item.result_url.startsWith('quota://')) {
+            failMsg = item.result_url.slice('quota://'.length) || failMsg;
+            isQuota = true;
+          }
           return `<article class="imagine-result failed" data-request-id="${reqId}">
             <div class="imagine-result-header">
               <div class="imagine-result-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
               <div>
-                <div class="imagine-result-title">Permintaan gagal</div>
-                <div class="imagine-result-status">Maaf, permintaan gagal diproses. Silakan coba lagi.</div>
+                <div class="imagine-result-title">${isQuota ? 'Limit Generate Tercapai' : 'Permintaan gagal'}</div>
+                <div class="imagine-result-status${isQuota ? ' quota-msg' : ''}">${escapeHtml(failMsg)}</div>
                 <div class="imagine-result-id">${reqId}</div>
               </div>
             </div>
@@ -2364,6 +2588,21 @@ box.innerHTML = backBarHtml + items.map(item => {
       if (!prompt || imagineBusy || imagineHasPending) return;
       if (!currentUser) { openAuthSheet('login'); return; }
 
+      // Cek limit free sebelum kirim
+      const quota = getRemainingQuota(imagineMode);
+      if (!quota.allowed) {
+        const isVideo = imagineMode === 'VIDEO';
+        const limitLabel = isVideo
+          ? `${FREE_VIDEO_LIMIT} video / 15 menit`
+          : `${FREE_IMAGE_LIMIT} gambar / 15 menit`;
+        refreshImagineQuotaBar();
+        showWarningModal(
+          `Limit akun free sudah tercapai (${limitLabel}). Upgrade ke Premium untuk generate tanpa batas, atau tunggu reset otomatis dalam 15 menit`,
+          'Limit Generate'
+        );
+        return;
+      }
+
       try {
         setImagineBusy(true);
 
@@ -2402,6 +2641,7 @@ box.innerHTML = backBarHtml + items.map(item => {
         clearImage();
         renderImagineRequests();
         renderChatHistoryList();
+        refreshImagineQuotaBar();
       } catch (err) {
         console.error('Imagine submit:', err);
         showWarningModal(err?.message || 'Gagal membuat request. Coba lagi.', 'Imagine Gagal');
