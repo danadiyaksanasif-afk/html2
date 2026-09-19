@@ -6,11 +6,18 @@
 
   <script>
     (function () {
-      function setAppHeight() {
+      var lastH = 0, raf = 0;
+      function applyHeight() {
+        raf = 0;
         var h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+        if (h === lastH) return;
+        lastH = h;
         document.documentElement.style.setProperty('--app-height', h + 'px');
       }
-      setAppHeight();
+      // Maksimal 1x per frame & dilewati kalau tinggi tidak berubah,
+      // supaya layout tidak dihitung ulang terus saat scroll/keyboard.
+      function setAppHeight() { if (!raf) raf = requestAnimationFrame(applyHeight); }
+      applyHeight();
       window.addEventListener('resize', setAppHeight);
       window.addEventListener('orientationchange', setAppHeight);
       if (window.visualViewport) {
@@ -22,11 +29,16 @@
 
   <title>Pretv X One - AI Interface</title>
 
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://avomctrjaroyourindwh.supabase.co" crossorigin>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+  <!-- marked & KaTeX baru dipakai saat menampilkan balasan, jadi di-defer supaya layar tampil duluan -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css"></noscript>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" defer></script>
 
   <style>
     :root {
@@ -51,7 +63,7 @@
     .message-content, input, textarea, [contenteditable="true"] { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
     .app-container { display: flex; width: 100%; height: var(--app-height, 100dvh); position: relative; overflow-x: hidden; }
 
-    .warning-modal-overlay { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(2, 4, 10, 0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility .2s ease; }
+    .warning-modal-overlay { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(2, 4, 10, 0.86); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility .2s ease; }
     .warning-modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; }
     .warning-modal { width: min(420px, 100%); display: grid; grid-template-columns: auto 1fr; gap: 13px; padding: 20px; border-radius: 20px; background: linear-gradient(145deg, rgba(18,22,36,.98), rgba(10,13,23,.98)); border: 1px solid rgba(96,165,250,.28); box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 32px rgba(59,130,246,.10); transform: translateY(10px) scale(.98); transition: transform .2s ease; }
     .warning-modal-overlay.show .warning-modal { transform: translateY(0) scale(1); }
@@ -66,9 +78,9 @@
     .confirm-modal-btn-cancel { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); color: #cbd2dd; }
     .confirm-modal-btn-danger { background: linear-gradient(90deg, rgba(239,68,68,.25), rgba(220,38,38,.25)); border: 1px solid rgba(248,113,113,.35); color: #fecaca; }
 
-    .sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 90; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+    .sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 90; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
     .sidebar-overlay.active { opacity: 1; visibility: visible; }
-    .sidebar { width: 280px; background: rgba(10, 13, 22, 0.95); border-right: 1px solid var(--panel-border); display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 100; }
+    .sidebar { width: 280px; background: rgba(10, 13, 22, 0.95); border-right: 1px solid var(--panel-border); display: flex; flex-direction: column; transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; }
     .sidebar-header { padding: 22px 20px 12px; display: flex; align-items: center; justify-content: space-between; }
     .brand { font-size: 1.3rem; font-weight: 800; letter-spacing: 1px; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 10px; }
 
@@ -128,8 +140,7 @@
     .pro-modal-overlay {
       position: fixed; inset: 0; z-index: 100050;
       display: flex; align-items: center; justify-content: center; padding: 20px;
-      background: rgba(2, 4, 10, 0.78);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      background: rgba(2, 4, 10, 0.88);
       opacity: 0; visibility: hidden; pointer-events: none;
       transition: opacity .2s ease, visibility .2s ease;
     }
@@ -257,7 +268,7 @@
     .chat-main { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; min-height: 0; overflow: hidden; }
     .sidebar, .drawer, #sidebar { z-index: 9999 !important; background-color: #0c0d14 !important; }
     .top-bar { position: fixed; top: 40px !important; left: 0; right: 0; height: auto !important; padding: 0 20px !important; background: transparent !important; box-shadow: none !important; border: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; display: flex !important; justify-content: space-between !important; align-items: center !important; z-index: 10 !important; pointer-events: none; }
-    .top-btn { pointer-events: auto !important; width: 42px; height: 42px; border-radius: 50%; background: rgba(15, 19, 32, 0.8) !important; border: 1px solid rgba(99, 102, 241, 0.25) !important; color: #a5b4fc; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: all 0.2s ease; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25); }
+    .top-btn { pointer-events: auto !important; width: 42px; height: 42px; border-radius: 50%; background: rgba(15, 19, 32, 0.92) !important; border: 1px solid rgba(99, 102, 241, 0.25) !important; color: #a5b4fc; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25); }
     .top-btn:hover { background: rgba(99, 102, 241, 0.15) !important; border-color: rgba(99, 102, 241, 0.4) !important; color: #ffffff; transform: scale(1.05); }
     .top-btn:active { transform: scale(0.95); }
     .top-bar::before, .top-bar::after { display: none !important; }
@@ -351,9 +362,9 @@
     .voice-mode-orb { width: 62%; height: 62%; object-fit: contain; border-radius: 50%; filter: drop-shadow(0 0 8px rgba(255,255,255,0.15)); }
     @keyframes voiceIdle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     .voice-mode-overlay.listening .voice-mode-orb-wrap { animation: voiceListening 1.4s ease-in-out infinite; }
-    @keyframes voiceListening { 0%, 100% { transform: scale(1); box-shadow: 0 0 28px rgba(99, 102, 241, 0.22); } 50% { transform: scale(1.1); box-shadow: 0 0 42px rgba(99, 102, 241, 0.32); } }
-    .voice-mode-overlay.speaking .voice-mode-orb-wrap { animation: voiceSpeaking 0.6s ease-in-out infinite; }
-    @keyframes voiceSpeaking { 0%, 100% { transform: scale(1); box-shadow: 0 0 24px rgba(6, 182, 212, 0.25); } 50% { transform: scale(1.14); box-shadow: 0 0 42px rgba(6, 182, 212, 0.4); } }
+    @keyframes voiceListening { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    .voice-mode-overlay.speaking .voice-mode-orb-wrap { box-shadow: 0 0 24px rgba(6, 182, 212, 0.25); animation: voiceSpeaking 0.6s ease-in-out infinite; }
+    @keyframes voiceSpeaking { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
     .voice-mode-status { color: var(--text-muted); font-size: 0.95rem; letter-spacing: 0.3px; }
     .voice-mode-credit { position: absolute; bottom: 16px; left: 0; right: 0; text-align: center; font-size: 0.68rem; color: rgba(255, 255, 255, 0.32); letter-spacing: 0.4px; pointer-events: none; }
     .voice-mode-controls { position: absolute; bottom: 56px; display: flex; align-items: center; gap: 22px; }
@@ -363,7 +374,7 @@
     .voice-mode-btn.muted { color: #ef4444; background: rgba(239,68,68,0.15); }
     .voice-mode-close { background: #fff; color: #000; }
 
-    .model-sheet-overlay, .sheet-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 999; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+    .model-sheet-overlay, .sheet-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 999; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
     .model-sheet-overlay.active, .sheet-overlay.active { opacity: 1; visibility: visible; }
     .model-bottom-sheet, .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel-bg); border-top-left-radius: 24px; border-top-right-radius: 24px; z-index: 1000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 12px 24px 32px; border-top: 1px solid var(--panel-border); box-shadow: 0 -4px 18px rgba(0,0,0,0.28); max-height: 88vh; overflow-y: auto; }
     .model-bottom-sheet.open, .bottom-sheet.open { transform: translateY(0); }
@@ -444,11 +455,11 @@
     .message-content :not(pre) > code { padding: 2px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.065); border: 1px solid rgba(255, 255, 255, 0.07); color: #e5e7eb; font-size: 0.88em; }
     .code-block-wrap { position: relative; margin: 12px 0; }
     .code-block-wrap pre { margin: 0 !important; padding: 14px 48px 14px 14px !important; border: 1px solid rgba(148, 163, 184, 0.12) !important; background: rgba(4, 7, 12, 0.72) !important; border-radius: 10px !important; }
-    .code-copy-btn { position: absolute; top: 8px; right: 8px; z-index: 2; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: rgba(255,255,255,0.045); color: #aeb7c7; cursor: pointer; transition: all 0.18s ease; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .code-copy-btn { position: absolute; top: 8px; right: 8px; z-index: 2; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: rgba(255,255,255,0.045); color: #aeb7c7; cursor: pointer; transition: all 0.18s ease; }
     .code-copy-btn:hover { background: rgba(255,255,255,0.10); color: #fff; border-color: rgba(255,255,255,0.14); }
     .code-copy-btn.copied { color: #86efac; border-color: rgba(134,239,172,0.18); }
 
-    .bubble-copy-popup { position: fixed; z-index: 100000; display: flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid rgba(255,255,255,0.10); border-radius: 10px; background: rgba(13, 17, 28, 0.96); color: #f3f4f6; font-size: 0.78rem; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.30); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0; transform: translateY(5px) scale(0.97); pointer-events: none; transition: opacity 0.16s ease, transform 0.16s ease; white-space: nowrap; }
+    .bubble-copy-popup { position: fixed; z-index: 100000; display: flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid rgba(255,255,255,0.10); border-radius: 10px; background: rgba(13, 17, 28, 0.96); color: #f3f4f6; font-size: 0.78rem; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.30); opacity: 0; transform: translateY(5px) scale(0.97); pointer-events: none; transition: opacity 0.16s ease, transform 0.16s ease; white-space: nowrap; }
     .bubble-copy-popup.show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
     .bubble-copy-popup button { border: 0; background: transparent; color: inherit; display: inline-flex; align-items: center; gap: 7px; padding: 0; font: inherit; cursor: pointer; }
     .bubble-copy-popup i { font-size: 0.76rem; }
@@ -475,8 +486,8 @@
     .brand-logo { width: 30px; height: 30px; object-fit: cover; border-radius: 8px; }
 
     @media (max-width: 768px) {
-      .sidebar { position: absolute; left: -280px; height: 100%; box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4); }
-      .sidebar.open { left: 0; }
+      .sidebar { position: absolute; top: 0; left: 0; height: 100%; transform: translate3d(-100%, 0, 0); }
+      .sidebar.open { transform: none; box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4); }
       .message { max-width: 90%; }
       .messages-container { padding: 16px; }
       .composer-container { padding: 12px 16px 16px; }
@@ -517,7 +528,7 @@
 
     .model-badge.free-badge { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); }
 
-    .top-nav { position: absolute; left: 50%; top: 0; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 5px; border: 1px solid rgba(99,102,241,.16); border-radius: 100px; background: rgba(10,13,22,.62); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); pointer-events: auto; }
+    .top-nav { position: absolute; left: 50%; top: 0; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 5px; border: 1px solid rgba(99,102,241,.16); border-radius: 100px; background: rgba(10,13,22,.92); pointer-events: auto; }
     .top-nav-btn { border: 0; background: transparent; color: #858da0; padding: 8px 12px; border-radius: 100px; font-size: .78rem; font-weight: 700; cursor: pointer; transition: .2s ease; white-space: nowrap; }
     .top-nav-btn.active { color: #fff; background: linear-gradient(135deg,rgba(99,102,241,.28),rgba(168,85,247,.22),rgba(6,182,212,.18)); box-shadow: 0 0 18px rgba(99,102,241,.12); }
     .imagine-view { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 112px 16px 24px; display: none; }
@@ -693,10 +704,8 @@
       align-items: center;
       gap: 6px;
       padding: 6px 10px;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.62);
       border-radius: 8px;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
       color: #e2e8f0;
       font-size: 0.75rem;
       font-weight: 700;
@@ -758,7 +767,7 @@
       padding: 1px;
       background: linear-gradient(135deg, rgba(99,102,241,.7), rgba(168,85,247,.55), rgba(6,182,212,.55), rgba(99,102,241,.7));
       background-size: 300% 300%;
-      animation: imagineBorderFlow 5s linear infinite;
+      animation: imagineBorderFlow 5s steps(50) infinite;
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
@@ -829,7 +838,6 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-size: 180% 100%;
-      animation: imagineTitleShine 3.5s ease-in-out infinite;
     }
     @keyframes imagineTitleShine {
       0%, 100% { background-position: 0% 50%; }
@@ -850,15 +858,16 @@
       position: absolute;
       top: 0;
       bottom: 0;
+      left: 0;
       width: 38%;
       border-radius: 99px;
       background: linear-gradient(90deg, #6366f1, #a855f7, #06b6d4, #a855f7);
       background-size: 200% 100%;
       box-shadow: 0 0 16px rgba(168,85,247,.55);
-      animation: imagineProgressSlide 1.8s cubic-bezier(.45,.05,.55,.95) infinite, imagineProgressGlow 2.4s ease-in-out infinite;
+      will-change: transform;
+      animation: imagineProgressSlide 1.8s cubic-bezier(.45,.05,.55,.95) infinite;
     }
-    @keyframes imagineProgressSlide { 0% { left: -42%; } 100% { left: 105%; } }
-    @keyframes imagineProgressGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+    @keyframes imagineProgressSlide { 0% { transform: translateX(-110%); } 100% { transform: translateX(276%); } }
 
     .imagine-loading-prompt {
       margin-top: 14px;
@@ -1022,15 +1031,13 @@
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.9);
       border: 1px solid rgba(99, 102, 241, 0.4);
       color: #c7d2fe;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
       transition: all 0.2s ease;
       z-index: 10;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -1090,6 +1097,11 @@
 .imagine-mode .imagine-card:nth-child(4) { animation-delay: 0.44s; }
 .imagine-mode .imagine-card:nth-child(5) { animation-delay: 0.52s; }
 .imagine-mode .imagine-card:nth-child(6) { animation-delay: 0.60s; }
+
+/* Riwayat chat dari Supabase */
+.message.no-anim { animation: none; }
+.message-media-omitted { display: inline-flex; align-items: center; gap: 7px; align-self: flex-end; padding: 6px 10px; border-radius: 10px; font-size: .74rem; color: #8b93a5; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); }
+.history-loading { flex: 1; min-height: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; color: #8b93a5; font-size: .88rem; }
   </style>
 </head>
 
@@ -1282,7 +1294,7 @@
               <input type="file" id="videoInput" accept="video/mp4,video/mpeg,video/quicktime,video/avi,video/x-flv,video/mpg,video/webm,video/wmv,video/3gpp" style="display:none;" onchange="handleVideoSelect(event)">
 
               <button class="icon-btn" id="btnMic" title="Voice Input" onclick="toggleVoiceInput()">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
               </button>
 
               <button class="btn-voice-mode" id="btnVoiceMode" onclick="openVoiceMode()" title="Voice Mode">
@@ -1473,13 +1485,41 @@ let viewingOtherModels = false;
   let resolveIntroFinished;
   const introFinishedPromise = new Promise(resolve => { resolveIntroFinished = resolve; });
 
-  // Video contoh di tab Imagine baru mulai diputar setelah intro selesai,
-  // supaya tidak berat saat intro masih tayang.
-  function playImagineGalleryVideos() {
-    document.querySelectorAll('#imagineGallery video.imagine-card-media').forEach(v => {
-      v.play().catch(() => {});
-    });
+  // Video contoh di tab Imagine hanya diputar kalau: intro sudah selesai, tab Imagine
+  // lagi terbuka, kartunya kelihatan di layar, dan aplikasi tidak di background.
+  // Di luar itu video di-pause, jadi tidak ada 4 video yang diam-diam jalan terus.
+  const galleryVisibleVideos = new Set();
+
+  function syncGalleryVideo(v) {
+    const shouldPlay = introFinished
+      && galleryVisibleVideos.has(v)
+      && document.body.classList.contains('imagine-mode')
+      && !document.hidden;
+    if (shouldPlay) { if (v.paused) v.play().catch(() => {}); }
+    else if (!v.paused) v.pause();
   }
+
+  function playImagineGalleryVideos() {
+    document.querySelectorAll('#imagineGallery video.imagine-card-media').forEach(syncGalleryVideo);
+  }
+
+  function setupGalleryVideoObserver() {
+    const videos = document.querySelectorAll('#imagineGallery video.imagine-card-media');
+    if (!('IntersectionObserver' in window)) {
+      videos.forEach(v => galleryVisibleVideos.add(v));
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) galleryVisibleVideos.add(entry.target);
+        else galleryVisibleVideos.delete(entry.target);
+        syncGalleryVideo(entry.target);
+      });
+    }, { threshold: 0.25 });
+    videos.forEach(v => observer.observe(v));
+  }
+
+  document.addEventListener('visibilitychange', playImagineGalleryVideos);
   introFinishedPromise.then(playImagineGalleryVideos);
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -1510,6 +1550,7 @@ let viewingOtherModels = false;
 
     loadVoicesOnce();
     updateComposerButtons();
+    setupGalleryVideoObserver();
   });
 
     const SUPABASE_URL = "https://avomctrjaroyourindwh.supabase.co";
@@ -1779,6 +1820,8 @@ let viewingOtherModels = false;
     }
 
     function logoutUser() {
+      flushChatSaves();
+      chatMessagesCache.clear();
       clearSession();
       renderAccountUI();
       renderModelList();
@@ -1902,54 +1945,45 @@ let viewingOtherModels = false;
     }
 
     // ==========================================
-    // HISTORY CHAT DISIMPAN BERDASARKAN USER ID
+    // HISTORY CHAT DISIMPAN DI SUPABASE (tabel chat_sessions)
+    // Di HP cuma ada daftar ringan (id, judul, waktu). Isi percakapan baru diambil
+    // dari Supabase saat chat dibuka, jadi memori & penyimpanan HP tidak terbebani.
+    // Yang disimpan cuma teks; foto/video hanya ditandai supaya tetap ringan.
     // ==========================================
-    let chatSessions = [];
+    const CHAT_TABLE = 'chat_sessions';
+    const MAX_CHAT_SESSIONS = 50;
+    const CHAT_SAVE_DELAY_MS = 700;
+    const CHAT_CACHE_LIMIT = 6;
+
+    let chatSessions = [];                 // [{ id, title, updatedAt }] tanpa isi pesan
     let currentChatId = null;
+    const chatMessagesCache = new Map();   // id -> pesan (teks saja), dibatasi CHAT_CACHE_LIMIT
+    const pendingChatSaves = new Map();    // id -> baris yang menunggu dikirim ke Supabase
+    let chatSaveTimer = null;
+    let chatSaveChain = Promise.resolve();
+    let chatLoadToken = 0;
+    let chatPruned = false;
+    let chatStoreWarned = false;
 
-    function getChatStorageKey() {
-      return currentUser ? `pretvfx_chat_sessions_${currentUser.id}` : null;
-    }
+    function chatUserId() { return currentUser ? String(currentUser.id) : null; }
 
-    function loadChatSessions() {
-      const key = getChatStorageKey();
-      if (!key) {
-        chatSessions = [];
-        return;
-      }
-      try {
-        const raw = localStorage.getItem(key);
-        const parsed = raw ? JSON.parse(raw) : [];
-        chatSessions = Array.isArray(parsed) ? parsed : [];
-      } catch (error) { chatSessions = []; }
-    }
-
-    function saveChatSessions() {
-      const key = getChatStorageKey();
-      if (!key) return; // Jangan simpan jika belum login
-
-      for (let attempt = 0; attempt < 15; attempt++) {
-        try {
-          localStorage.setItem(key, JSON.stringify(chatSessions));
-          return;
-        } catch (error) {
-          const isQuotaError = error && (error.name === 'QuotaExceededError' || error.code === 22);
-          if (!isQuotaError) { console.error('Gagal menyimpan riwayat chat:', error); return; }
-          if (!dropOldestStoredImage()) {
-            showWarningModal('Penyimpanan HP sudah penuh. Hapus beberapa riwayat chat lama agar chat baru bisa tersimpan.', 'Penyimpanan Penuh');
-            return;
-          }
-        }
+    function reportChatStoreError(label, error) {
+      const msg = String((error && (error.message || error.code)) || error || '');
+      console.warn('[Riwayat] ' + label + ':', msg);
+      const missing = error && (error.code === 'PGRST205' || error.code === '42P01' || /chat_sessions/i.test(msg));
+      if (missing && !chatStoreWarned) {
+        chatStoreWarned = true;
+        console.warn('[Riwayat] Tabel "chat_sessions" belum ada di Supabase. Jalankan SQL-nya di SQL Editor dulu.');
       }
     }
 
-    function dropOldestStoredImage() {
-      const sorted = [...chatSessions].sort((a, b) => a.updatedAt - b.updatedAt);
-      for (const session of sorted) {
-        const target = session.messages.find(m => (Array.isArray(m.images) && m.images.length) || m.image);
-        if (target) { target.images = []; target.image = null; return true; }
+    function rememberChatMessages(id, messages) {
+      chatMessagesCache.delete(id);
+      chatMessagesCache.set(id, messages);
+      if (!chatUserId()) return; // tamu: tidak ada di Supabase, jadi cache jangan dibuang
+      while (chatMessagesCache.size > CHAT_CACHE_LIMIT) {
+        chatMessagesCache.delete(chatMessagesCache.keys().next().value);
       }
-      return false;
     }
 
     function createNewChatId() { return 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
@@ -1961,34 +1995,170 @@ let viewingOtherModels = false;
       return text.length > 40 ? text.slice(0, 40) + '...' : text;
     }
 
-    function trimChatSessions() {
-      const MAX_SESSIONS = 50;
-      if (chatSessions.length <= MAX_SESSIONS) return;
-      chatSessions.sort((a, b) => b.updatedAt - a.updatedAt);
-      chatSessions.length = MAX_SESSIONS;
-    }
-
     function toStorableMessages(messages) {
       return messages.map(m => {
-        if (m.video) { const copy = { ...m, video: null, videoOmitted: true }; return copy; }
-        return m;
+        const hadVideo = !!m.video || !!m.videoOmitted || m.mediaKind === 'video';
+        const hadImage = (Array.isArray(m.images) && m.images.length > 0) || !!m.image || m.mediaKind === 'image';
+        const kind = m.mediaOmitted || (hadVideo ? 'video' : (hadImage ? 'image' : null));
+        const out = { role: m.role === 'assistant' ? 'assistant' : 'user', text: m.text || '' };
+        if (kind) out.media = kind;
+        return out;
       });
     }
 
+    function buildChatRow(uid, id, title, messages, updatedAtMs) {
+      return {
+        id: String(id),
+        user_id: uid,
+        title: String(title || 'Percakapan Baru').slice(0, 120),
+        messages: toStorableMessages(messages),
+        updated_at: new Date(updatedAtMs || Date.now()).toISOString()
+      };
+    }
+
+    async function fetchChatList(uid) {
+      const { data, error } = await supabaseClient
+        .from(CHAT_TABLE)
+        .select('id, title, updated_at')
+        .eq('user_id', uid)
+        .order('updated_at', { ascending: false })
+        .limit(MAX_CHAT_SESSIONS);
+      if (error) throw error;
+      return (data || []).map(r => ({
+        id: r.id,
+        title: r.title || 'Percakapan Baru',
+        updatedAt: new Date(r.updated_at).getTime() || Date.now()
+      }));
+    }
+
+    function applyChatList(fromServer) {
+      // Chat yang baru dibuat di sesi ini tapi belum sempat terkirim tetap dipertahankan
+      const serverIds = new Set(fromServer.map(s => s.id));
+      const localOnly = chatSessions.filter(s => !serverIds.has(s.id) && pendingChatSaves.has(s.id));
+      chatSessions = [...localOnly, ...fromServer].sort((a, b) => b.updatedAt - a.updatedAt);
+      renderChatHistoryList();
+      historyListDirty = false;
+    }
+
+    async function loadChatSessions() {
+      const uid = chatUserId();
+      if (!uid) { chatSessions = []; return; }
+      try {
+        const list = await fetchChatList(uid);
+        if (chatUserId() !== uid) return; // akun berganti selagi menunggu
+        applyChatList(list);
+        pruneOldChatRows(uid, list);
+      } catch (error) {
+        reportChatStoreError('Gagal memuat daftar riwayat', error);
+      }
+
+      // Riwayat lama yang masih di HP (localStorage) dipindah sekali ke Supabase, lalu dihapus dari HP.
+      try {
+        const moved = await migrateLegacyLocalChats(uid);
+        if (moved > 0 && chatUserId() === uid) applyChatList(await fetchChatList(uid));
+      } catch (error) {
+        reportChatStoreError('Gagal memindahkan riwayat lama', error);
+      }
+    }
+
+    async function migrateLegacyLocalChats(uid) {
+      const key = 'pretvfx_chat_sessions_' + uid;
+      let raw = null;
+      try { raw = localStorage.getItem(key); } catch (_) { return 0; }
+      if (!raw) return 0;
+
+      let old = null;
+      try { old = JSON.parse(raw); } catch (_) { old = null; }
+      raw = null;
+      if (!Array.isArray(old) || old.length === 0) {
+        try { localStorage.removeItem(key); } catch (_) {}
+        return 0;
+      }
+
+      const rows = old
+        .filter(s => s && s.id && Array.isArray(s.messages) && s.messages.length > 0)
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+        .slice(0, MAX_CHAT_SESSIONS)
+        .map(s => buildChatRow(uid, s.id, s.title, s.messages, s.updatedAt));
+      old = null;
+
+      for (let i = 0; i < rows.length; i += 10) {
+        const { error } = await supabaseClient.from(CHAT_TABLE).upsert(rows.slice(i, i + 10), { onConflict: 'user_id,id' });
+        if (error) throw error; // data di HP TIDAK dihapus kalau gagal, jadi aman dicoba lagi nanti
+      }
+      try { localStorage.removeItem(key); } catch (_) {}
+      return rows.length;
+    }
+
+    // Batas 50 chat (sama seperti aturan sebelumnya): yang paling lama dibersihkan dari Supabase.
+    function pruneOldChatRows(uid, list) {
+      if (chatPruned || list.length < MAX_CHAT_SESSIONS) return;
+      chatPruned = true;
+      const oldest = new Date(list[list.length - 1].updatedAt).toISOString();
+      supabaseClient.from(CHAT_TABLE).delete().eq('user_id', uid).lt('updated_at', oldest)
+        .then(({ error }) => { if (error) console.warn('[Riwayat] Gagal merapikan riwayat lama:', error.message); });
+    }
+
+    function trimChatSessions() {
+      if (chatSessions.length <= MAX_CHAT_SESSIONS) return;
+      chatSessions.sort((a, b) => b.updatedAt - a.updatedAt);
+      const removed = chatSessions.splice(MAX_CHAT_SESSIONS);
+      removed.forEach(s => { chatMessagesCache.delete(s.id); pendingChatSaves.delete(s.id); });
+      const uid = chatUserId();
+      if (uid && removed.length) {
+        supabaseClient.from(CHAT_TABLE).delete().eq('user_id', uid).in('id', removed.map(s => s.id))
+          .then(({ error }) => { if (error) console.warn('[Riwayat] Gagal membuang riwayat lama:', error.message); });
+      }
+    }
+
+    // Simpan ditunda sebentar & digabung: kirim pesan lalu balasan AI cukup jadi 1 request, bukan tiap pesan.
+    function queueChatSave(row) {
+      pendingChatSaves.set(row.id, row);
+      if (chatSaveTimer) clearTimeout(chatSaveTimer);
+      chatSaveTimer = setTimeout(flushChatSaves, CHAT_SAVE_DELAY_MS);
+    }
+
+    function flushChatSaves() {
+      if (chatSaveTimer) { clearTimeout(chatSaveTimer); chatSaveTimer = null; }
+      chatSaveChain = chatSaveChain.then(sendPendingChatSaves);
+      return chatSaveChain;
+    }
+
+    async function sendPendingChatSaves() {
+      if (!pendingChatSaves.size) return;
+      const rows = [...pendingChatSaves.values()];
+      pendingChatSaves.clear();
+      try {
+        const { error } = await supabaseClient.from(CHAT_TABLE).upsert(rows, { onConflict: 'user_id,id' });
+        if (error) throw error;
+      } catch (error) {
+        // Kembalikan ke antrean (kecuali sudah ada versi yang lebih baru) supaya dicoba lagi di simpan berikutnya
+        rows.forEach(r => { if (!pendingChatSaves.has(r.id)) pendingChatSaves.set(r.id, r); });
+        reportChatStoreError('Gagal menyimpan riwayat chat', error);
+      }
+    }
+
+    // Kirim yang tertunda saat aplikasi ditutup / pindah ke background
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushChatSaves(); });
+    window.addEventListener('pagehide', () => { flushChatSaves(); });
+
     function persistCurrentChat() {
       if (!currentChatId || currentChatMessages.length === 0) return;
-      const storableMessages = toStorableMessages(currentChatMessages);
-      let session = chatSessions.find(s => s.id === currentChatId);
-      if (session) {
-        session.messages = storableMessages;
-        session.title = generateChatTitle(currentChatMessages);
-        session.updatedAt = Date.now();
-      } else {
-        session = { id: currentChatId, title: generateChatTitle(currentChatMessages), messages: storableMessages, updatedAt: Date.now() };
-        chatSessions.unshift(session);
+      const uid = chatUserId();
+      const now = Date.now();
+      const title = generateChatTitle(currentChatMessages);
+
+      // Daftar di sidebar langsung diperbarui, tanpa nunggu jaringan
+      const session = chatSessions.find(s => s.id === currentChatId);
+      if (session) { session.title = title; session.updatedAt = now; }
+      else chatSessions.unshift({ id: currentChatId, title, updatedAt: now });
+
+      const row = buildChatRow(uid, currentChatId, title, currentChatMessages, now);
+      rememberChatMessages(currentChatId, row.messages);
+      if (uid) {
+        queueChatSave(row);
+        trimChatSessions();
       }
-      trimChatSessions();
-      saveChatSessions();
 
       historyListDirty = true;
       const sidebar = document.getElementById('sidebar');
@@ -2182,7 +2352,7 @@ let viewingOtherModels = false;
     function deleteImagineHistory(event, requestId) {
       if (event && event.stopPropagation) event.stopPropagation();
       
-      showConfirmModal('Riwayat Imagine ini akan dihapus permanen dari HP kamu.', async () => {
+      showConfirmModal('Riwayat Imagine ini akan dihapus permanen.', async () => {
         try {
           const { error } = await supabaseClient
             .from('imagine_requests')
@@ -2208,33 +2378,68 @@ let viewingOtherModels = false;
       }, { title: 'Hapus riwayat Imagine ini?', confirmText: 'Hapus' });
     }
 
-    function loadChatSession(id) {
-      const session = chatSessions.find(s => s.id === id);
-      if (!session) return;
+    async function loadChatSession(id) {
+      const listed = chatSessions.find(s => s.id === id);
+      if (!listed) return;
+      const token = ++chatLoadToken;
+      const container = document.getElementById('messagesContainer');
 
+      if (document.body.classList.contains('imagine-mode')) exitImagine();
       currentChatId = id;
-      currentChatMessages = session.messages.map(msg => ({ ...msg }));
+      clearImage();
 
-      if (document.body.classList.contains('imagine-mode')) {
-        exitImagine();
+      let messages = chatMessagesCache.get(id);
+      if (!messages) {
+        // Belum ada di HP: ambil dari Supabase (cuma chat yang dibuka, bukan semuanya)
+        currentChatMessages = [];
+        container.innerHTML = '<div class="history-loading"><i class="fa-solid fa-circle-notch fa-spin"></i><span>Memuat percakapan...</span></div>';
+        renderChatHistoryList();
+        closeSidebarOnMobile();
+        try {
+          const uid = chatUserId();
+          if (!uid) throw new Error('Belum login');
+          const { data, error } = await supabaseClient
+            .from(CHAT_TABLE)
+            .select('messages')
+            .eq('user_id', uid)
+            .eq('id', id)
+            .maybeSingle();
+          if (error) throw error;
+          messages = Array.isArray(data && data.messages) ? data.messages : [];
+          rememberChatMessages(id, messages);
+        } catch (error) {
+          if (token !== chatLoadToken) return;
+          reportChatStoreError('Gagal membuka riwayat chat', error);
+          currentChatId = createNewChatId();
+          currentChatMessages = [];
+          renderWelcomeMessage();
+          renderChatHistoryList();
+          showWarningModal('Riwayat chat ini gagal dibuka. Periksa koneksi internetmu lalu coba lagi.', 'Gagal Membuka Chat');
+          return;
+        }
+      }
+      if (token !== chatLoadToken) return;
+
+      currentChatMessages = messages.map(m => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        text: m.text || '',
+        mediaOmitted: m.media || null
+      }));
+
+      if (currentChatMessages.length === 0) {
+        renderWelcomeMessage();
+      } else {
+        container.innerHTML = '';
+        // Tanpa animasi & tanpa scroll per pesan, biar buka chat panjang tidak nge-lag
+        currentChatMessages.forEach(msg => {
+          appendMessage(msg.role === 'assistant' ? 'ai' : 'user', msg.text, null, false, null,
+            { noAnim: true, skipScroll: true, mediaOmitted: msg.mediaOmitted });
+        });
+        container.scrollTop = container.scrollHeight;
       }
 
-      const container = document.getElementById('messagesContainer');
-      container.innerHTML = '';
-      currentChatMessages.forEach(msg => {
-        appendMessage(
-          msg.role === 'assistant' ? 'ai' : 'user',
-          msg.text,
-          Array.isArray(msg.images) && msg.images.length ? msg.images : (msg.image || msg.video || null),
-          false,
-          msg.video ? 'video' : (msg.images?.length || msg.image ? 'image' : null)
-        );
-      });
-
-      clearImage();
       renderChatHistoryList();
-
-      if (window.innerWidth <= 768 && document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
+      closeSidebarOnMobile();
     }
 
     function startNewChat() {
@@ -2267,9 +2472,22 @@ let viewingOtherModels = false;
 
     function deleteChatSession(event, id) {
       if (event && event.stopPropagation) event.stopPropagation();
-      showConfirmModal('Riwayat chat ini akan dihapus permanen dari HP kamu.', () => {
+      showConfirmModal('Riwayat chat ini akan dihapus permanen.', async () => {
+        const uid = chatUserId();
+        pendingChatSaves.delete(id);
+        try {
+          if (uid) {
+            await chatSaveChain; // jangan sampai ketimpa simpanan yang lagi jalan
+            const { error } = await supabaseClient.from(CHAT_TABLE).delete().eq('user_id', uid).eq('id', id);
+            if (error) throw error;
+          }
+        } catch (error) {
+          reportChatStoreError('Gagal menghapus riwayat chat', error);
+          showWarningModal('Riwayat chat gagal dihapus. Periksa koneksi internetmu lalu coba lagi.', 'Gagal Menghapus');
+          return;
+        }
         chatSessions = chatSessions.filter(s => s.id !== id);
-        saveChatSessions();
+        chatMessagesCache.delete(id);
 
         if (id === currentChatId) startNewChat();
         else renderChatHistoryList();
@@ -2278,9 +2496,9 @@ let viewingOtherModels = false;
 
     window.addEventListener('DOMContentLoaded', async () => {
       loadSessionFromStorage();
-      loadChatSessions();
-      
+
       if (currentUser) {
+        loadChatSessions();
         currentChatId = createNewChatId();
         renderChatHistoryList();
         subscribeUserRealtime();
@@ -2297,6 +2515,7 @@ let viewingOtherModels = false;
       refreshImagineQuotaBar();
       // Update countdown limit free setiap 30 detik
       setInterval(() => {
+        if (document.hidden) return;
         if (document.body.classList.contains('imagine-mode')) refreshImagineQuotaBar();
       }, 1000);
     });
@@ -2532,6 +2751,7 @@ let viewingOtherModels = false;
       if (typingTimeout) clearTimeout(typingTimeout);
 
       function typeLoop() {
+        if (!element.isConnected) { typingTimeout = null; return; }
         const currentPhrase = phrases[phraseIndex];
         if (isDeleting) {
           element.textContent = currentPhrase.substring(0, charIndex - 1);
@@ -2581,8 +2801,9 @@ let viewingOtherModels = false;
       setImagineMode(imagineMode, false);
       updateImaginePlaceholder();
       updateComposerButtons();
-      loadImagineRequests();
+      loadImagineRequestsIfStale();
       connectImagineStream();
+      playImagineGalleryVideos();
     }
 
     function exitImagine() {
@@ -2602,6 +2823,7 @@ let viewingOtherModels = false;
       const input = document.getElementById('promptInput');
       if (input) input.placeholder = 'Mengobrol dengan Pretvfx-AI...';
       renderChatHistoryList();
+      playImagineGalleryVideos();
     }
 
     function exitSingleView() {
@@ -3098,6 +3320,20 @@ box.innerHTML = items.map(item => {
       }
     }
 
+    let lastImagineLoadAt = 0;
+    let imagineChannelStatus = '';
+
+    // Data Imagine sudah dijaga up-to-date oleh Realtime, jadi pindah tab Ask <-> Imagine
+    // tidak perlu ambil ulang dari Supabase kalau barusan di-load.
+    function loadImagineRequestsIfStale() {
+      if (currentUser && (Date.now() - lastImagineLoadAt) < 20000) {
+        renderImagineRequests();
+        renderChatHistoryList();
+        return;
+      }
+      loadImagineRequests();
+    }
+
     async function loadImagineRequests() {
       if (!currentUser) {
         imagineRequests.clear();
@@ -3115,6 +3351,7 @@ box.innerHTML = items.map(item => {
         if (error) throw error;
         imagineRequests.clear();
         (data || []).forEach(item => imagineRequests.set(item.request_id, item));
+        lastImagineLoadAt = Date.now();
         renderImagineRequests();
         renderChatHistoryList();
         historyListDirty = false;
@@ -3131,7 +3368,7 @@ box.innerHTML = items.map(item => {
     // lagi buka tab Imagine atau nggak), biar begitu balik ke tab Imagine
     // datanya udah update; render ulangnya baru kalau memang lagi di tab Imagine.
     setInterval(async () => {
-      if (!imagineHasPending) return;
+      if (!imagineHasPending || document.hidden) return;
       await checkServerHeartbeat();
       if (document.body.classList.contains('imagine-mode')) {
         renderImagineRequests();
@@ -3140,10 +3377,13 @@ box.innerHTML = items.map(item => {
 
     function connectImagineStream() {
       if (!currentUser) return;
+      // Channel yang sudah tersambung dipakai terus, tidak dibongkar-pasang tiap masuk tab Imagine
+      if (imagineRealtimeChannel && imagineChannelStatus === 'SUBSCRIBED') return;
       if (imagineRealtimeChannel) {
         supabaseClient.removeChannel(imagineRealtimeChannel);
         imagineRealtimeChannel = null;
       }
+      imagineChannelStatus = '';
       imagineRealtimeChannel = supabaseClient
         .channel(`imagine-user-${currentUser.id}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'imagine_requests', filter: `user_id=eq.${currentUser.id}` }, payload => {
@@ -3170,7 +3410,8 @@ box.innerHTML = items.map(item => {
           }
         })
         .subscribe(status => {
-          if (status === 'SUBSCRIBED') loadImagineRequests();
+          imagineChannelStatus = status;
+          if (status === 'SUBSCRIBED') loadImagineRequestsIfStale();
         });
     }
 
@@ -3277,7 +3518,8 @@ box.innerHTML = items.map(item => {
         updateImaginePlaceholder();
         updateComposerButtons();
         connectImagineStream();
-        loadImagineRequests();
+        loadImagineRequestsIfStale();
+        playImagineGalleryVideos();
       }
 
       viewingSingleImagineId = requestId;
@@ -3777,7 +4019,16 @@ box.innerHTML = items.map(item => {
         removeThinking();
         setLoadingState(false);
         abortController = null;
+        releaseSentVideoPayloads();
       }
+    }
+
+    // Video yang sudah terkirim ke AI tidak dipakai lagi (tiap kirim video berdiri sendiri),
+    // jadi data base64-nya dilepas supaya memori HP tidak menumpuk.
+    function releaseSentVideoPayloads() {
+      currentChatMessages.forEach(m => {
+        if (m.video) { m.video = null; m.videoOmitted = true; }
+      });
     }
 
     function parseApiKeys(raw) {
@@ -3854,6 +4105,7 @@ box.innerHTML = items.map(item => {
           ...trimmedHistory.map(msg => {
             const role = msg.role === 'assistant' ? 'assistant' : 'user';
             let textContent = msg.text || '';
+            if (!textContent && msg.mediaOmitted) textContent = '[Pengguna mengirim foto/video di pesan ini, tapi tidak tersimpan di riwayat]';
             const images = Array.isArray(msg.images) ? msg.images : (msg.image ? [msg.image] : []);
 
             if (!includeImages) {
@@ -3910,11 +4162,11 @@ box.innerHTML = items.map(item => {
       activeVideoObjectUrls.clear();
     });
 
-    function appendMessage(sender, text, media = null, animate = false, mediaKind = null) {
+    function appendMessage(sender, text, media = null, animate = false, mediaKind = null, options = {}) {
       const container = document.getElementById('messagesContainer');
       const msgDiv = document.createElement('div');
       const shouldAnimate = animate && sender === 'ai' && !!text;
-      msgDiv.className = `message ${sender}${shouldAnimate ? ' is-typing' : ''}`;
+      msgDiv.className = `message ${sender}${shouldAnimate ? ' is-typing' : ''}${options.noAnim ? ' no-anim' : ''}`;
 
       let mediaHtml = '';
       let videoDisplayUrl = null;
@@ -3929,10 +4181,17 @@ box.innerHTML = items.map(item => {
         }
       }
 
+      // Riwayat dari Supabase tidak menyimpan foto/video: tampilkan penanda kecil saja
+      if (!mediaHtml && options.mediaOmitted) {
+        const isVid = options.mediaOmitted === 'video';
+        mediaHtml = `<div class="message-media-omitted"><i class="fa-solid ${isVid ? 'fa-video' : 'fa-image'}"></i> ${isVid ? 'Video' : 'Foto'} tidak disimpan di riwayat</div>`;
+      }
+
       const parsedText = shouldAnimate ? '' : renderMessageHtml(text);
+      const contentHtml = (!text && options.mediaOmitted) ? '' : `<div class="message-content">${parsedText}</div>`;
       msgDiv.innerHTML = `
         ${mediaHtml}
-        <div class="message-content">${parsedText}</div>
+        ${contentHtml}
         <div class="message-actions">
           ${sender === 'ai' ? `
             <button class="action-link" onclick="copyMessageContent(this)" title="Salin teks"><i class="fa-regular fa-copy"></i><span>Salin</span></button>
@@ -3969,7 +4228,7 @@ box.innerHTML = items.map(item => {
       }
 
       container.appendChild(msgDiv);
-      container.scrollTop = container.scrollHeight;
+      if (!options.skipScroll) container.scrollTop = container.scrollHeight;
       if (shouldAnimate) return typeWriterEffect(msgDiv, text);
       return Promise.resolve(text);
     }
