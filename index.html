@@ -480,6 +480,23 @@
     .imagine-result.warned .imagine-result-status { color: #e5e7eb; line-height: 1.55; margin-top: 4px; }
     .imagine-result.failed .imagine-result-status.quota-msg { color: #fca5a5; }
 
+    /* Kartu peringatan server/worker Imagine sedang gangguan */
+    .imagine-result.stalled {
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      background: linear-gradient(145deg, rgba(40, 30, 10, 0.55), rgba(20, 16, 8, 0.65));
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .imagine-result.stalled .imagine-result-icon {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      width: 42px; height: 42px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+    }
+    .imagine-result.stalled .imagine-result-title { color: #fbbf24; font-weight: 700; }
+    .imagine-result.stalled .imagine-result-status { color: #e5e7eb; line-height: 1.55; margin-top: 4px; }
+
     /* =========================================
        CSS CONTOH HASIL (GAMBAR 2)
        ========================================= */
@@ -1175,11 +1192,39 @@ let viewingOtherModels = false;
     let imagineBusy = false;
     let imagineHasPending = false;
 
-    // Limit free: 3 gambar + 1 video, reset otomatis tiap 3 jam. Premium tanpa batas.
+    // Deteksi server mati pakai 2 cara digabung:
+    // 1) Status masih 'queued' kelamaan (worker seharusnya nyomot tiap ~2 detik,
+    //    ini kerjaan otomatis, gak nunggu owner) — jalan tanpa syarat tambahan.
+    // 2) Heartbeat dari server (tabel system_heartbeat) berhenti kelamaan — ini
+    //    yang bisa nangkep server mati walau requestnya udah kekirim ke owner
+    //    (status 'processing'), tanpa salah tuduh pas owner cuma lagi lambat balas.
+    // Angka-angka ini sengaja dibikin kecil biar kartu peringatannya cepet muncul.
+    const IMAGINE_QUEUED_STALL_MS = 6 * 1000;    // 6 detik
+    const IMAGINE_HEARTBEAT_STALE_MS = 9 * 1000; // 9 detik (server lapor tiap 3 detik)
+    let serverAlive = true; // asumsi hidup dulu sampai heartbeat pertama kecek
+
+    async function checkServerHeartbeat() {
+      try {
+        const { data, error } = await supabaseClient
+          .from('system_heartbeat')
+          .select('last_seen')
+          .eq('id', 'imagine_worker')
+          .maybeSingle();
+        if (error || !data?.last_seen) return; // tabel belum ada/gagal baca -> jangan buru-buru anggap mati
+        const lastSeenMs = new Date(data.last_seen).getTime();
+        serverAlive = (Date.now() - lastSeenMs) < IMAGINE_HEARTBEAT_STALE_MS;
+      } catch (_) {
+        // Gagal cek koneksi ke Supabase sendiri -> biarkan status sebelumnya, jangan disimpulkan
+      }
+    }
+
+    // Limit free: 5 gambar + 1 video, reset otomatis tiap 45 menit. Premium tanpa batas.
+    // Window ini FIXED: begitu lewat 45 menit dari request pertama di window itu,
+    // semua slot balik penuh SEKALIGUS, bukan kebuka satu-satu kayak sliding window.
     const FREE_IMAGE_LIMIT = 5;
     const FREE_VIDEO_LIMIT = 1;
-    const QUOTA_WINDOW_MS = 15 * 60 * 1000;
-    let quotaCache = { imageUsed: 0, videoUsed: 0, isPremium: false, nextResetAt: null };
+    const QUOTA_WINDOW_MS = 45 * 60 * 1000;
+    let quotaCache = { imageUsed: 0, videoUsed: 0, isPremium: false, imageResetAt: null, videoResetAt: null };
 
     let forcedVisibleImagineIds = new Set();
     let viewingSingleImagineId = null;
@@ -2096,32 +2141,55 @@ let viewingOtherModels = false;
       refreshImagineQuotaBar();
     }
 
+    function computeFixedWindowUsage(mode) {
+      // Ambil semua request mode ini (bukan failed/warned), urut lama -> baru
+      const timestamps = [...imagineRequests.values()]
+        .filter(item => {
+          const st = String(item.status || '');
+          if (st === 'failed' || st === 'warned') return false;
+          return String(item.mode || 'IMAGE').toUpperCase() === mode;
+        })
+        .map(item => new Date(item.created_at || 0).getTime())
+        .filter(ts => ts > 0)
+        .sort((a, b) => a - b);
+
+      // Simulasi window fixed: begitu jarak ke request sebelumnya > 45 menit,
+      // window lama dianggap TUNTAS SELURUHNYA, mulai window baru dari nol.
+      let windowStart = null;
+      let used = 0;
+      for (const ts of timestamps) {
+        if (windowStart === null || (ts - windowStart) > QUOTA_WINDOW_MS) {
+          windowStart = ts;
+          used = 0;
+        }
+        used++;
+      }
+      return { used, windowStart };
+    }
+
     function computeQuotaFromRequests() {
       const isPremium = !!(currentUser && currentUser.is_premium);
       if (isPremium) {
-        quotaCache = { imageUsed: 0, videoUsed: 0, isPremium: true, nextResetAt: null };
+        quotaCache = { imageUsed: 0, videoUsed: 0, isPremium: true, imageResetAt: null, videoResetAt: null };
         return quotaCache;
       }
 
       const now = Date.now();
-      const windowStart = now - QUOTA_WINDOW_MS;
-      let imageUsed = 0;
-      let videoUsed = 0;
-      let oldestTs = null;
+      const img = computeFixedWindowUsage('IMAGE');
+      const vid = computeFixedWindowUsage('VIDEO');
 
-      for (const item of imagineRequests.values()) {
-        const st = String(item.status || '');
-        if (st === 'failed' || st === 'warned') continue;
-        const ts = new Date(item.created_at || 0).getTime();
-        if (!ts || ts < windowStart) continue;
-        const mode = String(item.mode || 'IMAGE').toUpperCase();
-        if (mode === 'VIDEO') videoUsed++;
-        else imageUsed++;
-        if (oldestTs === null || ts < oldestTs) oldestTs = ts;
-      }
+      // Kalau window terakhirnya sendiri udah lewat 45 menit dari sekarang, berarti
+      // belum ada request baru sejak waktunya reset -> kuota dianggap sudah penuh lagi.
+      const imageExpired = img.windowStart && (now - img.windowStart) > QUOTA_WINDOW_MS;
+      const videoExpired = vid.windowStart && (now - vid.windowStart) > QUOTA_WINDOW_MS;
 
-      const nextResetAt = oldestTs ? oldestTs + QUOTA_WINDOW_MS : null;
-      quotaCache = { imageUsed, videoUsed, isPremium: false, nextResetAt };
+      quotaCache = {
+        imageUsed: imageExpired ? 0 : img.used,
+        videoUsed: videoExpired ? 0 : vid.used,
+        isPremium: false,
+        imageResetAt: (!imageExpired && img.windowStart) ? img.windowStart + QUOTA_WINDOW_MS : null,
+        videoResetAt: (!videoExpired && vid.windowStart) ? vid.windowStart + QUOTA_WINDOW_MS : null
+      };
       return quotaCache;
     }
 
@@ -2181,11 +2249,18 @@ let viewingOtherModels = false;
 
       if (hint) {
         if (q.imageUsed > 0 || q.videoUsed > 0) {
-          const left = q.nextResetAt ? q.nextResetAt - Date.now() : QUOTA_WINDOW_MS;
+          // Prioritaskan reset mode yang lagi aktif dipakai; kalau mode itu belum
+          // ada pemakaian, tampilkan reset mode lain yang ada pemakaiannya.
+          let resetAt = null;
+          if (imagineMode === 'VIDEO' && q.videoUsed > 0) resetAt = q.videoResetAt;
+          else if (imagineMode === 'IMAGE' && q.imageUsed > 0) resetAt = q.imageResetAt;
+          else resetAt = q.imageUsed > 0 ? q.imageResetAt : q.videoResetAt;
+
+          const left = resetAt ? resetAt - Date.now() : QUOTA_WINDOW_MS;
           hint.textContent = `Limit free · reset dalam ${formatQuotaCountdown(left)}`;
           hint.classList.add('show');
         } else {
-          hint.textContent = `Limit free · ${FREE_IMAGE_LIMIT} gambar & ${FREE_VIDEO_LIMIT} video / 15 menit`;
+          hint.textContent = `Limit free · ${FREE_IMAGE_LIMIT} gambar & ${FREE_VIDEO_LIMIT} video / 45 menit`;
           hint.classList.add('show');
         }
       }
@@ -2430,6 +2505,32 @@ box.innerHTML = backBarHtml + items.map(item => {
           </article>`;
         }
 
+        // Cek apakah request masih 'queued' (belum diambil worker) kelamaan —
+        // ini SATU-SATUNYA sinyal yang murni nunjukin server/worker mati, karena
+        // langkah ini otomatis, tidak melibatkan owner sama sekali. Status
+        // 'processing' sengaja tidak dicek waktunya, biar nunggu balasan owner
+        // lama sekalipun tidak dianggap error.
+        const createdAtMs = item.created_at ? new Date(item.created_at).getTime() : null;
+        const elapsedMs = createdAtMs ? (Date.now() - createdAtMs) : 0;
+        const queuedTooLong = item.status === 'queued' && createdAtMs && elapsedMs > IMAGINE_QUEUED_STALL_MS;
+        // Heartbeat mati = server beneran down, berlaku juga buat status 'processing'
+        // (request udah kekirim ke owner tapi server-nya tumbang di tengah jalan).
+        const heartbeatDead = !serverAlive && (item.status === 'queued' || item.status === 'processing');
+        const isStalled = queuedTooLong || heartbeatDead;
+
+        if (isStalled) {
+          return `<article class="imagine-result stalled" data-request-id="${reqId}">
+            <div class="imagine-result-header" style="display:flex;gap:12px;align-items:flex-start;">
+              <div class="imagine-result-icon"><i class="fa-solid fa-server"></i></div>
+              <div>
+                <div class="imagine-result-title">Server Sedang Mengalami Kendala</div>
+                <div class="imagine-result-status">Proses ${isVideo ? 'video' : 'gambar'} kamu belum ada perkembangan. Server sedang gangguan/offline. Request ini tetap tersimpan dan akan otomatis lanjut kalau server sudah normal.</div>
+                <div class="imagine-result-id">${reqId}</div>
+              </div>
+            </div>
+          </article>`;
+        }
+
         const loadingTitle = isVideo ? 'Video sedang dibuat...' : 'Gambar sedang dibuat...';
         const loadingSub = isVideo
           ? 'Pretvfx-AI sedang membuat video yang anda inginkan. Mohon jangan keluar dari aplikasi, agar proses berjalan dengan lancar.'
@@ -2458,7 +2559,7 @@ box.innerHTML = backBarHtml + items.map(item => {
     function upsertImagineRequest(item) {
       if (!item?.request_id) return;
       imagineRequests.set(item.request_id, item);
-      
+
       const isImagineMode = document.body.classList.contains('imagine-mode');
 
       if (isImagineMode) {
@@ -2492,6 +2593,19 @@ box.innerHTML = backBarHtml + items.map(item => {
         renderImagineRequests();
       }
     }
+
+    // Karena kalau server mati gak akan ada event Realtime baru sama sekali,
+    // kita harus tetap render ulang secara berkala biar deteksi "stalled" jalan.
+    // checkServerHeartbeat() jalan terus selama ada request pending (gak peduli
+    // lagi buka tab Imagine atau nggak), biar begitu balik ke tab Imagine
+    // datanya udah update; render ulangnya baru kalau memang lagi di tab Imagine.
+    setInterval(async () => {
+      if (!imagineHasPending) return;
+      await checkServerHeartbeat();
+      if (document.body.classList.contains('imagine-mode')) {
+        renderImagineRequests();
+      }
+    }, 3000);
 
     function connectImagineStream() {
       if (!currentUser) return;
@@ -2593,11 +2707,11 @@ box.innerHTML = backBarHtml + items.map(item => {
       if (!quota.allowed) {
         const isVideo = imagineMode === 'VIDEO';
         const limitLabel = isVideo
-          ? `${FREE_VIDEO_LIMIT} video / 15 menit`
-          : `${FREE_IMAGE_LIMIT} gambar / 15 menit`;
+          ? `${FREE_VIDEO_LIMIT} video / 45 menit`
+          : `${FREE_IMAGE_LIMIT} gambar / 45 menit`;
         refreshImagineQuotaBar();
         showWarningModal(
-          `Limit akun free sudah tercapai (${limitLabel}). Upgrade ke Premium untuk generate tanpa batas, atau tunggu reset otomatis dalam 15 menit`,
+          `Limit akun free sudah tercapai (${limitLabel}). Upgrade ke Premium untuk generate tanpa batas, atau tunggu reset otomatis dalam 45 menit`,
           'Limit Generate'
         );
         return;
