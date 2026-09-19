@@ -69,33 +69,190 @@
     .sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 90; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
     .sidebar-overlay.active { opacity: 1; visibility: visible; }
     .sidebar { width: 280px; background: rgba(10, 13, 22, 0.95); border-right: 1px solid var(--panel-border); display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 100; }
-    .sidebar-header { padding: 20px; border-bottom: 1px solid var(--panel-border); display: flex; align-items: center; justify-content: space-between; }
-    .brand { font-size: 1.1rem; font-weight: 800; letter-spacing: 1px; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 10px; }
-    .btn-new-chat { margin: 16px; padding: 12px; border-radius: 10px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--panel-border); color: #fff; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.2s ease; }
-    .btn-new-chat:hover { background: rgba(99, 102, 241, 0.2); border-color: #6366f1; }
+    .sidebar-header { padding: 22px 20px 12px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { font-size: 1.3rem; font-weight: 800; letter-spacing: 1px; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 10px; }
 
-    .history-section { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 6px 16px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(99, 102, 241, 0.12); overflow: hidden; }
-    .history-section-header { flex-shrink: 0; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(99, 102, 241, 0.1); }
-    .history-section-title { display: flex; align-items: center; gap: 7px; font-size: 0.74rem; font-weight: 600; color: #b4b9c6; }
-    .history-section-title i { font-size: 0.7rem; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .history-section-count { font-size: 0.66rem; color: var(--text-muted); background: rgba(99, 102, 241, 0.12); padding: 1px 7px; border-radius: 20px; min-width: 16px; text-align: center; }
-    .chat-history { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
-    .history-item { position: relative; padding: 6px 8px; border-radius: 9px; cursor: pointer; display: flex; align-items: center; gap: 8px; border: 1px solid transparent; transition: background 0.15s ease, border-color 0.15s ease; }
-    .history-item:hover { background: rgba(255, 255, 255, 0.045); }
-    .history-item.active { background: rgba(99, 102, 241, 0.12); border-color: rgba(99, 102, 241, 0.22); }
-    .history-item.active::before { content: ''; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent-gradient); }
-    .history-item-icon { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.58rem; color: #c7d2fe; background: rgba(99, 102, 241, 0.16); border: 1px solid rgba(99, 102, 241, 0.22); }
-    .history-item.active .history-item-icon { background: var(--accent-gradient); color: #fff; border-color: transparent; }
-    .history-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; color: var(--text-muted); }
-    .history-item:hover .history-item-title, .history-item.active .history-item-title { color: #fff; }
-    .history-item-action { position: relative; flex-shrink: 0; width: 24px; height: 18px; }
-    .history-item-time, .history-item-delete { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.15s ease; }
-    .history-item-time { font-size: 0.63rem; color: rgba(156, 163, 175, 0.65); justify-content: flex-end; pointer-events: none; }
-    .history-item-delete { background: none; border: none; color: var(--text-muted); font-size: 0.75rem; opacity: 0; cursor: pointer; border-radius: 6px; }
-    .history-item:hover .history-item-time { opacity: 0; }
-    .history-item:hover .history-item-delete { opacity: 1; }
-    .history-item-delete:hover { color: var(--danger); background: rgba(239, 68, 68, 0.14); }
-    .history-empty { padding: 10px 8px; color: var(--text-muted); font-size: 0.78rem; text-align: center; opacity: 0.5; }
+    /* ===== SIDEBAR ala Claude: menu, daftar "Terbaru" berbullet cincin, dan dock avatar + Chat baru ===== */
+    .sidebar-nav { flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; padding: 4px 12px 8px; }
+    .sidebar-nav-item { display: flex; align-items: center; gap: 16px; width: 100%; height: 48px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; color: rgba(229, 231, 235, 0.9); font-size: 1rem; text-align: left; cursor: pointer; transition: background 0.15s ease; }
+    .sidebar-nav-item i { width: 22px; text-align: center; font-size: 1.05rem; color: rgba(209, 213, 219, 0.8); }
+    .sidebar-nav-item:active { background: rgba(255, 255, 255, 0.07); }
+    .sidebar-nav-item.active { color: #fff; font-weight: 600; }
+    .sidebar-nav-item.active i { color: #c4b5fd; }
+    .sidebar-divider { flex-shrink: 0; height: 1px; margin: 4px 16px 0; background: rgba(255, 255, 255, 0.08); }
+
+    /* ===== Upgrade to Pro (sidebar) ===== */
+    .sidebar-pro-card {
+      flex-shrink: 0;
+      margin: 8px 12px 6px;
+      padding: 12px 12px 11px;
+      border-radius: 14px;
+      border: 1px solid rgba(251, 191, 36, 0.28);
+      background:
+        radial-gradient(120% 100% at 0% 0%, rgba(251,191,36,.14) 0%, transparent 55%),
+        radial-gradient(100% 80% at 100% 100%, rgba(168,85,247,.12) 0%, transparent 50%),
+        linear-gradient(160deg, rgba(24,20,12,.95), rgba(14,12,18,.98));
+      cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      text-align: left;
+      width: calc(100% - 24px);
+      display: block;
+      font: inherit;
+      color: inherit;
+    }
+    .sidebar-pro-card:active {
+      transform: scale(0.98);
+      border-color: rgba(251, 191, 36, 0.45);
+      box-shadow: 0 8px 24px rgba(251,191,36,.12);
+    }
+    .sidebar-pro-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 8px; border-radius: 999px;
+      font-size: .65rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+      color: #fde68a; background: rgba(251,191,36,.14); border: 1px solid rgba(251,191,36,.28);
+      margin-bottom: 7px;
+    }
+    .sidebar-pro-badge i { color: #fbbf24; font-size: .7rem; }
+    .sidebar-pro-title {
+      font-size: .95rem; font-weight: 800; letter-spacing: -.01em;
+      background: linear-gradient(90deg, #fef3c7, #fbbf24, #f59e0b);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .sidebar-pro-sub { margin-top: 4px; font-size: .72rem; color: #a8a29e; line-height: 1.4; }
+    .sidebar-pro-cta {
+      margin-top: 9px; display: inline-flex; align-items: center; gap: 6px;
+      font-size: .72rem; font-weight: 700; color: #fcd34d;
+    }
+    .sidebar-pro-cta i { font-size: .65rem; }
+
+    .pro-modal-overlay {
+      position: fixed; inset: 0; z-index: 100050;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      background: rgba(2, 4, 10, 0.78);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      opacity: 0; visibility: hidden; pointer-events: none;
+      transition: opacity .2s ease, visibility .2s ease;
+    }
+    .pro-modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; }
+    .pro-modal {
+      width: min(400px, 100%); max-height: min(90vh, 640px); overflow-y: auto;
+      padding: 22px 20px 18px; border-radius: 22px;
+      background: linear-gradient(165deg, rgba(22,18,12,.99), rgba(12,10,18,.99));
+      border: 1px solid rgba(251,191,36,.28);
+      box-shadow: 0 24px 60px rgba(0,0,0,.55), 0 0 40px rgba(251,191,36,.08);
+      transform: translateY(12px) scale(.97); transition: transform .22s ease;
+    }
+    .pro-modal-overlay.show .pro-modal { transform: none; }
+    .pro-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .pro-modal-head h3 {
+      font-size: 1.2rem; font-weight: 800; margin: 0;
+      background: linear-gradient(90deg, #fef3c7, #fbbf24);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .pro-modal-head p { margin: 4px 0 0; font-size: .8rem; color: #a8a29e; line-height: 1.4; }
+    .pro-modal-close {
+      flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05);
+      color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .pro-modal-close:active { background: rgba(255,255,255,.1); color: #fff; }
+    .pro-benefit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+    .pro-benefit-list li {
+      display: flex; align-items: flex-start; gap: 11px;
+      padding: 11px 12px; border-radius: 14px;
+      background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.06);
+    }
+    .pro-benefit-list li i {
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .78rem; color: #fbbf24;
+      background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.2);
+    }
+    .pro-benefit-list li span { font-size: .86rem; color: #e7e5e4; line-height: 1.4; font-weight: 500; padding-top: 4px; }
+    .pro-contact-label {
+      margin: 18px 0 8px; font-size: .72rem; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase; color: #78716c;
+    }
+    .pro-contact-row { display: flex; flex-direction: column; gap: 8px; }
+    .pro-contact-btn {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: 14px;
+      text-decoration: none; font-weight: 700; font-size: .9rem;
+      border: 1px solid transparent; transition: transform .12s ease, filter .12s ease;
+    }
+    .pro-contact-btn:active { transform: scale(0.98); filter: brightness(1.05); }
+    .pro-contact-btn i {
+      width: 36px; height: 36px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
+    }
+    .pro-contact-btn.wa {
+      background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.28); color: #86efac;
+    }
+    .pro-contact-btn.wa i { background: rgba(34,197,94,.2); color: #4ade80; }
+    .pro-contact-btn.tg {
+      background: rgba(56,189,248,.12); border-color: rgba(56,189,248,.28); color: #7dd3fc;
+    }
+    .pro-contact-btn.tg i { background: rgba(56,189,248,.2); color: #38bdf8; }
+    .pro-contact-btn small {
+      display: block; font-size: .72rem; font-weight: 500; opacity: .75; margin-top: 2px;
+    }
+
+    .history-section { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .history-label { flex-shrink: 0; padding: 16px 28px 6px; font-size: 0.86rem; font-weight: 500; color: rgba(156, 163, 175, 0.8); }
+    .chat-history { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 12px 104px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.14) transparent; }
+    .chat-history::-webkit-scrollbar { width: 4px; }
+    .chat-history::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 4px; }
+
+    .history-item { position: relative; display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 8px 0 12px; border-radius: 12px; cursor: pointer; -webkit-touch-callout: none; transition: background 0.15s ease, transform 0.15s ease; }
+    .history-item:active, .history-item.pressing { background: rgba(255, 255, 255, 0.07); }
+    .history-item.pressing { transform: scale(0.985); }
+    .history-item.active { background: rgba(99, 102, 241, 0.13); }
+    .history-bullet { flex: 0 0 18px; display: flex; align-items: center; justify-content: center; color: #a78bfa; font-size: 0.82rem; }
+    .history-bullet i { line-height: 1; }
+    .history-item.active .history-bullet { color: #a5b4fc; }
+    .history-bullet.ring::before { content: ''; box-sizing: border-box; width: 8px; height: 8px; border: 1.6px solid rgba(156, 163, 175, 0.7); border-radius: 50%; }
+    .history-item.active .history-bullet.ring::before { border-color: #a5b4fc; }
+    .history-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; color: rgba(229, 231, 235, 0.9); }
+    .history-item.active .history-item-title { color: #fff; }
+
+    /* Di HP tidak ada tombol per baris: hapus lewat tekan-tahan. Di desktop muncul saat di-hover. */
+    .history-item-delete { display: none; flex-shrink: 0; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: none; border-radius: 8px; background: transparent; color: #9ca3af; font-size: 0.8rem; cursor: pointer; transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease; }
+    @media (hover: hover) and (pointer: fine) {
+      .history-item-delete { display: flex; width: 0; margin-left: -12px; opacity: 0; overflow: hidden; }
+      .history-item:hover { background: rgba(255, 255, 255, 0.05); }
+      .history-item.active:hover { background: rgba(99, 102, 241, 0.18); }
+      .history-item:hover .history-item-title { color: #fff; }
+      .history-item:hover .history-item-delete { width: 30px; margin-left: 0; opacity: 1; }
+      .history-item-delete:hover { color: #f87171; background: rgba(239, 68, 68, 0.14); }
+    }
+
+    .history-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 36px 22px; text-align: center; color: rgba(156, 163, 175, 0.75); }
+    .history-empty > i { font-size: 1.3rem; opacity: 0.55; margin-bottom: 4px; }
+    .history-empty strong { font-size: 0.9rem; font-weight: 600; color: #d1d5db; }
+    .history-empty span { font-size: 0.8rem; line-height: 1.5; }
+
+    /* Dock bawah: avatar (kiri) + tombol "Chat baru" (kanan), mengambang di atas daftar */
+    .sidebar-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 34px 16px 12px; background: linear-gradient(to top, #0c0d14 42%, rgba(12, 13, 20, 0)); pointer-events: none; }
+    .sidebar-dock > * { pointer-events: auto; }
+    .btn-new-chat { position: relative; z-index: 2; display: flex; align-items: center; gap: 9px; height: 44px; margin: 0; padding: 0 20px 0 17px; border: none; border-radius: 22px; background: #f3f4f6; color: #0c0d14; font-size: 0.95rem; font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); transition: transform 0.15s ease, background 0.15s ease; }
+    .btn-new-chat:hover { background: #fff; }
+    .btn-new-chat:active { transform: scale(0.97); }
+    .btn-new-chat i { font-size: 0.85rem; }
+
+    .sidebar-account { position: relative; z-index: 1; flex-shrink: 0; }
+    .account-avatar-btn { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: none; border-radius: 50%; background: var(--accent-gradient); color: #fff; font-size: 1.05rem; font-weight: 700; text-transform: uppercase; cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); transition: transform 0.15s ease; }
+    .account-avatar-btn:active { transform: scale(0.95); }
+    .account-login-btn { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px 0 15px; border-radius: 22px; background: #1a1d2b; border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; font-size: 0.92rem; font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); transition: background 0.2s ease; }
+    .account-login-btn:active { background: #262a3c; }
+    .account-menu { position: absolute; left: 0; bottom: calc(100% + 10px); width: 220px; padding: 8px; border-radius: 16px; background: #171a26; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); opacity: 0; visibility: hidden; transform: translateY(6px) scale(0.98); transform-origin: bottom left; transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s; }
+    .account-menu.open { opacity: 1; visibility: visible; transform: none; }
+    .account-menu-head { padding: 8px 10px 10px; margin-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    .account-name { font-size: 0.92rem; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .account-plan { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 0.72rem; font-weight: 700; }
+    .account-plan.free { color: var(--text-muted); }
+    .account-plan.premium { background: linear-gradient(90deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .account-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 10px; border: none; border-radius: 10px; background: transparent; color: #f87171; font-size: 0.9rem; font-weight: 500; text-align: left; cursor: pointer; }
+    .account-menu-item:active { background: rgba(239, 68, 68, 0.12); }
 
     .chat-main { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; min-height: 0; overflow: hidden; }
     .sidebar, .drawer, #sidebar { z-index: 9999 !important; background-color: #0c0d14 !important; }
@@ -315,7 +472,7 @@
     @keyframes thinkingSpin { to { transform: rotate(360deg); } }
     @keyframes thinkingDot { 0%, 60%, 100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 
-    .brand-logo { width: 27px; height: 27px; object-fit: cover; border-radius: 7px; }
+    .brand-logo { width: 30px; height: 30px; object-fit: cover; border-radius: 8px; }
 
     @media (max-width: 768px) {
       .sidebar { position: absolute; left: -280px; height: 100%; box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4); }
@@ -338,21 +495,8 @@
       .toolbar-right { gap: 2px; }
     }
 
-    .sidebar-footer { padding: 12px 16px; text-align: center; font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid var(--panel-border); background: transparent; letter-spacing: 0.5px; margin-top: auto; }
+    .sidebar-footer { flex-shrink: 0; padding: 2px 16px 14px; text-align: center; font-size: 0.72rem; color: var(--text-muted); background: transparent; letter-spacing: 0.5px; margin-top: auto; }
     .modder-name { font-weight: 700; background: linear-gradient(90deg, #a5b4fc, #c084fc, #67e8f9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: inline-block; }
-
-    .sidebar-account { flex-shrink: 0; margin: 0 16px 12px; }
-    .account-login-btn { width: 100%; padding: 11px 14px; border-radius: 12px; background: rgba(99, 102, 241, 0.12); border: 1px solid var(--panel-border); color: #fff; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; transition: all 0.2s ease; }
-    .account-login-btn:hover { background: rgba(99, 102, 241, 0.22); border-color: #6366f1; }
-    .account-user-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(99, 102, 241, 0.16); }
-    .account-avatar { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; color: #fff; text-transform: uppercase; }
-    .account-info { flex: 1; min-width: 0; }
-    .account-name { font-size: 0.83rem; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .account-plan { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 0.68rem; font-weight: 700; }
-    .account-plan.free { color: var(--text-muted); }
-    .account-plan.premium { background: linear-gradient(90deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .account-logout-btn { flex-shrink: 0; background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 7px; border-radius: 8px; transition: all 0.2s ease; }
-    .account-logout-btn:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
 
     .auth-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); margin-bottom: 18px; }
     .auth-tab { flex: 1; border: none; background: transparent; color: var(--text-muted); font-weight: 600; font-size: 0.85rem; padding: 9px; border-radius: 9px; cursor: pointer; transition: all 0.2s ease; }
@@ -596,11 +740,34 @@
       animation: fadeIn .25s ease; 
       overflow: hidden; 
     }
-    .imagine-result.loading { border-color: rgba(168,85,247,.28); animation: imagineCardGlow 3s ease-in-out infinite; }
-    @keyframes imagineCardGlow { 0%, 100% { box-shadow: 0 0 22px rgba(168,85,247,.08); } 50% { box-shadow: 0 0 42px rgba(168,85,247,.24); } }
-    .imagine-result.loading::before { content:''; position:absolute; inset:0; border-radius:18px; padding:1px; background: linear-gradient(135deg, rgba(99,102,241,.65), rgba(168,85,247,.65), rgba(6,182,212,.65), rgba(99,102,241,.65)); background-size: 300% 300%; animation: imagineBorderFlow 4s linear infinite; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; z-index: 0; }
+    .imagine-result.loading {
+      padding: 16px;
+      border: 1px solid rgba(168,85,247,.22);
+      background:
+        radial-gradient(120% 90% at 10% 0%, rgba(99,102,241,.16) 0%, transparent 55%),
+        radial-gradient(100% 80% at 100% 100%, rgba(168,85,247,.12) 0%, transparent 50%),
+        linear-gradient(165deg, rgba(18,22,36,.98), rgba(10,13,23,.98));
+      box-shadow: 0 12px 36px rgba(0,0,0,.32), 0 0 0 1px rgba(168,85,247,.06) inset;
+      overflow: hidden;
+    }
+    .imagine-result.loading::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(99,102,241,.7), rgba(168,85,247,.55), rgba(6,182,212,.55), rgba(99,102,241,.7));
+      background-size: 300% 300%;
+      animation: imagineBorderFlow 5s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      z-index: 0;
+    }
     .imagine-result.loading > * { position: relative; z-index: 1; }
     @keyframes imagineBorderFlow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+    @keyframes imagineCardGlow { 0%, 100% { box-shadow: 0 0 22px rgba(168,85,247,.08); } 50% { box-shadow: 0 0 42px rgba(168,85,247,.24); } }
 
     .imagine-result-header { display: flex; align-items: flex-start; gap: 12px; }
     .imagine-result-header > div:last-child { flex: 1; min-width: 0; }
@@ -608,22 +775,153 @@
     .imagine-result.failed { border-color: rgba(239,68,68,.28); }
     .imagine-result.failed .imagine-result-icon { background: rgba(239,68,68,.12); color:#f87171; }
 
-    .imagine-loading-state { display: flex; align-items: center; gap: 14px; padding: 4px 0 2px; }
-    .imagine-loading-orb { flex-shrink: 0; width: 52px; height: 52px; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; background: conic-gradient(from 0deg, #6366f1, #a855f7, #06b6d4, #6366f1); animation: imagineOrbSpin 2.4s linear infinite; box-shadow: 0 0 24px rgba(168,85,247,.35); }
-    .imagine-loading-orb::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: #0f1320; }
-    .imagine-loading-orb i { position: relative; z-index: 1; color: #c4b5fd; font-size: 16px; animation: imagineOrbIcon 1.8s ease-in-out infinite; }
+    .imagine-loading-state { display: flex; align-items: center; gap: 14px; padding: 2px 0 4px; }
+    .imagine-loading-orb {
+      flex-shrink: 0;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: conic-gradient(from 0deg, #6366f1, #a855f7, #06b6d4, #6366f1);
+      animation: imagineOrbSpin 2.2s linear infinite;
+      box-shadow: 0 0 28px rgba(168,85,247,.4), 0 0 0 4px rgba(99,102,241,.08);
+    }
+    .imagine-loading-orb::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px dashed rgba(168,85,247,.28);
+      animation: imagineOrbSpin 8s linear infinite reverse;
+      pointer-events: none;
+    }
+    .imagine-loading-orb::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: linear-gradient(160deg, #141a2a, #0b0f1a); }
+    .imagine-loading-orb i { position: relative; z-index: 1; color: #e9d5ff; font-size: 17px; animation: imagineOrbIcon 1.6s ease-in-out infinite; }
     @keyframes imagineOrbSpin { to { transform: rotate(360deg); } }
-    @keyframes imagineOrbIcon { 0%,100% { opacity:.55; transform: scale(.9); } 50% { opacity:1; transform: scale(1.08); } }
+    @keyframes imagineOrbIcon { 0%,100% { opacity:.7; transform: scale(.92); } 50% { opacity:1; transform: scale(1.1); } }
 
     .imagine-loading-text { flex:1; min-width:0; }
-    .imagine-loading-title { font-size: .92rem; font-weight: 800; color: #fff; letter-spacing: -.01em; }
-    .imagine-loading-sub { margin-top: 3px; font-size: .74rem; color: #8f99ab; line-height: 1.45; }
+    .imagine-loading-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: .65rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #c4b5fd;
+      background: rgba(99,102,241,.14);
+      border: 1px solid rgba(129,140,248,.22);
+    }
+    .imagine-loading-kicker i { font-size: .62rem; }
+    .imagine-loading-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -.02em;
+      background: linear-gradient(90deg, #fff, #c4b5fd, #67e8f9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-size: 180% 100%;
+      animation: imagineTitleShine 3.5s ease-in-out infinite;
+    }
+    @keyframes imagineTitleShine {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .imagine-loading-sub { margin-top: 5px; font-size: .76rem; color: #9ca3af; line-height: 1.5; }
 
-    .imagine-progress { margin-top: 14px; height: 5px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.05); position: relative; }
-    .imagine-progress-bar { position:absolute; top:0; bottom:0; width: 42%; border-radius: 99px; background: linear-gradient(90deg, #6366f1, #a855f7, #06b6d4); box-shadow: 0 0 14px rgba(168,85,247,.55); animation: imagineProgressSlide 1.9s cubic-bezier(.45,.05,.55,.95) infinite; }
-    @keyframes imagineProgressSlide { 0% { left: -45%; } 100% { left: 100%; } }
+    .imagine-progress {
+      margin-top: 16px;
+      height: 6px;
+      border-radius: 99px;
+      overflow: hidden;
+      background: rgba(255,255,255,.06);
+      position: relative;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.25);
+    }
+    .imagine-progress-bar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 38%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #6366f1, #a855f7, #06b6d4, #a855f7);
+      background-size: 200% 100%;
+      box-shadow: 0 0 16px rgba(168,85,247,.55);
+      animation: imagineProgressSlide 1.8s cubic-bezier(.45,.05,.55,.95) infinite, imagineProgressGlow 2.4s ease-in-out infinite;
+    }
+    @keyframes imagineProgressSlide { 0% { left: -42%; } 100% { left: 105%; } }
+    @keyframes imagineProgressGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
 
-    .imagine-loading-prompt { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.05); }
+    .imagine-loading-prompt {
+      margin-top: 14px;
+      padding: 12px 12px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .imagine-loading-prompt-label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: .62rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #7c879c;
+    }
+    .imagine-loading-prompt .imagine-result-status {
+      margin-top: 0;
+      color: #e5e7eb;
+      font-size: .86rem;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .imagine-loading-prompt .imagine-result-id {
+      margin-top: 10px;
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.05);
+      color: #6b7280;
+      font-size: .62rem;
+    }
+    .imagine-loading-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .imagine-loading-dots {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .imagine-loading-dots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #a78bfa;
+      animation: imagineDotPulse 1.2s ease-in-out infinite;
+    }
+    .imagine-loading-dots span:nth-child(2) { animation-delay: .15s; }
+    .imagine-loading-dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes imagineDotPulse {
+      0%, 80%, 100% { opacity: .25; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-3px); }
+    }
+    .imagine-loading-hint {
+      font-size: .65rem;
+      font-weight: 600;
+      color: #7c879c;
+    }
 
     .imagine-result-title { font-size: .9rem; font-weight: 800; color: #fff; letter-spacing: -.01em; }
     .imagine-result-status { margin-top: 4px; color: #a4adbe; font-size: .78rem; line-height: 1.5; word-break: break-word; }
@@ -650,10 +948,63 @@
     .imagine-result-media-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 99px; }
     .imagine-result-media-row .imagine-result-media { flex: 0 0 auto; width: min(82vw, 360px); scroll-snap-align: start; margin-top: 0; }
 
-    .imagine-result-caption { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+    .imagine-result-caption { margin-top: 0; padding: 14px 4px 2px; }
     .imagine-result-caption-label { display: block; color: #ffffff; font-size: .85rem; font-weight: 700; letter-spacing: .01em; }
     .imagine-result-caption-text { display: block; margin-top: 6px; color: #cbd5e1; font-size: .78rem; line-height: 1.5; word-break: break-word; }
     .imagine-result-id { margin-top: 10px; color: #94a3b8; font-size: .65rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .03em; background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px; display: inline-block; }
+
+    .imagine-result.completed {
+      padding: 10px;
+      border: 1px solid rgba(129, 140, 248, 0.22);
+      background:
+        radial-gradient(120% 80% at 0% 0%, rgba(99,102,241,.12) 0%, transparent 55%),
+        radial-gradient(100% 70% at 100% 100%, rgba(6,182,212,.10) 0%, transparent 50%),
+        linear-gradient(165deg, rgba(18,22,36,.98), rgba(10,13,23,.98));
+      box-shadow: 0 12px 36px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+      overflow: hidden;
+    }
+    .imagine-result.completed .imagine-media-frame {
+      position: relative; border-radius: 14px; overflow: hidden; background: #05070d;
+      border: 1px solid rgba(255,255,255,.08); box-shadow: 0 8px 28px rgba(0,0,0,.45);
+    }
+    .imagine-result.completed .imagine-result-media {
+      margin: 0; border: none; border-radius: 0; box-shadow: none; width: 100%; max-height: 72vh; object-fit: cover; display: block;
+    }
+    .imagine-done-badge {
+      display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 5px 8px; border-radius: 999px;
+      font-size: .72rem; font-weight: 800; letter-spacing: .02em; color: #ecfdf5;
+      background: linear-gradient(135deg, rgba(16,185,129,.28), rgba(6,182,212,.22));
+      border: 1px solid rgba(52,211,153,.35); box-shadow: 0 0 18px rgba(16,185,129,.12);
+    }
+    .imagine-done-badge i {
+      width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      font-size: .65rem; background: rgba(16,185,129,.35); color: #6ee7b7;
+    }
+    .imagine-done-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .imagine-done-mode {
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+      font-size: .68rem; font-weight: 700; color: #c4b5fd; background: rgba(99,102,241,.12); border: 1px solid rgba(129,140,248,.22);
+    }
+    .imagine-done-prompt { margin: 0; color: #e5e7eb; font-size: .88rem; font-weight: 600; line-height: 1.45; word-break: break-word; }
+    .imagine-done-prompt-label {
+      display: block; margin-bottom: 4px; font-size: .65rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #7c879c;
+    }
+    .imagine-done-footer {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 11px;
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .imagine-done-id {
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .62rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #6b7280; letter-spacing: .02em;
+    }
+    .imagine-done-chip {
+      flex-shrink: 0; font-size: .62rem; font-weight: 700; color: #a5b4fc;
+      background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.18); padding: 3px 8px; border-radius: 6px;
+    }
+    .imagine-result.completed .download-btn { top: 10px; right: 10px; background: rgba(8,10,18,.72); border-color: rgba(255,255,255,.14); }
+    .imagine-result.completed .imagine-reference {
+      margin-bottom: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+    }
 
     .imagine-reference { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
     .imagine-reference-label { color: #a1a1aa; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
@@ -662,7 +1013,6 @@
     .imagine-result-highlight { animation: imagineHighlightPulse 1.6s ease; }
     @keyframes imagineHighlightPulse { 0% { box-shadow: 0 0 0 2px rgba(168,85,247,.9), 0 0 32px rgba(168,85,247,.45); } 100% { box-shadow: none; } }
 
-    .history-item-icon.imagine-icon { background: linear-gradient(135deg, rgba(99,102,241,.28), rgba(168,85,247,.22)); color: #c4b5fd; }
 
     /* CSS TOMBOL DOWNLOAD GAMBAR */
     .download-btn {
@@ -806,20 +1156,22 @@
         </button>
       </div>
 
-      <button class="btn-new-chat" onclick="startNewChat()">
-        <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        New Chat
+      <button type="button" class="sidebar-pro-card" onclick="openProUpgradeModal()" aria-label="Upgrade to Pro">
+        <span class="sidebar-pro-badge"><i class="fa-solid fa-crown"></i> Pro</span>
+        <div class="sidebar-pro-title">Upgrade to Pro</div>
+        <div class="sidebar-pro-sub">Generate tanpa batas · model Pro · kuota lebih tinggi</div>
+        <span class="sidebar-pro-cta">Lihat benefit <i class="fa-solid fa-arrow-right"></i></span>
       </button>
+      <div class="sidebar-divider"></div>
 
       <div class="history-section">
-        <div class="history-section-header">
-          <span class="history-section-title"><i class="fa-regular fa-clock"></i> History Chat</span>
-          <span class="history-section-count" id="historyCount"></span>
-        </div>
+        <div class="history-label">Terbaru</div>
         <div class="chat-history" id="chatHistory"></div>
+        <div class="sidebar-dock">
+          <div class="sidebar-account" id="sidebarAccount"></div>
+          <button type="button" class="btn-new-chat" onclick="startNewChat()"><i class="fa-solid fa-plus"></i> Chat baru</button>
+        </div>
       </div>
-
-      <div class="sidebar-account" id="sidebarAccount"></div>
 
       <div class="sidebar-footer">
         Modded by <span class="modder-name">Zain Suryo Negoro</span>
@@ -1191,6 +1543,7 @@ let viewingOtherModels = false;
     let imagineRequests = new Map();
     let imagineBusy = false;
     let imagineHasPending = false;
+    let lastImagineRenderKey = '';
 
     // Deteksi server mati pakai 2 cara digabung:
     // 1) Status masih 'queued' kelamaan (worker seharusnya nyomot tiap ~2 detik,
@@ -1271,28 +1624,30 @@ let viewingOtherModels = false;
 
       if (!currentUser) {
         container.innerHTML = `
-          <button class="account-login-btn" onclick="openAuthSheet('login')">
+          <button type="button" class="account-login-btn" onclick="openAuthSheet('login')">
             <i class="fa-solid fa-right-to-bracket"></i>
-            Login / Daftar Akun
+            Masuk
           </button>`;
         return;
       }
 
       const initial = (currentUser.username || currentUser.email || '?').trim().charAt(0);
       container.innerHTML = `
-        <div class="account-user-row">
-          <div class="account-avatar">${escapeHtml(initial)}</div>
-          <div class="account-info">
+        <div class="account-menu" id="accountMenu">
+          <div class="account-menu-head">
             <div class="account-name">${escapeHtml(currentUser.username)}</div>
             <div class="account-plan ${currentUser.is_premium ? 'premium' : 'free'}">
               ${currentUser.is_premium ? '<i class="fa-solid fa-crown"></i> Premium' : 'Akun Free'}
             </div>
           </div>
-          <button class="account-logout-btn" onclick="logoutUser()" title="Keluar akun">
+          <button type="button" class="account-menu-item" onclick="logoutUser()">
             <i class="fa-solid fa-right-from-bracket"></i>
+            Keluar akun
           </button>
-        </div>`;
+        </div>
+        <button type="button" class="account-avatar-btn" onclick="toggleAccountMenu(event)" aria-label="Menu akun">${escapeHtml(initial)}</button>`;
     }
+
 
     function openAuthSheet(mode) {
       switchAuthTab(mode || 'login');
@@ -1364,10 +1719,11 @@ let viewingOtherModels = false;
         renderModelList();
         connectImagineStream();
         
-        // Load history khusus user baru
+        // Load history khusus user baru (chat + imagine)
         loadChatSessions();
         currentChatId = createNewChatId();
         renderChatHistoryList();
+        loadImagineRequests();
         renderWelcomeMessage();
         
         closeAuthSheet();
@@ -1406,10 +1762,11 @@ let viewingOtherModels = false;
         renderModelList();
         connectImagineStream();
         
-        // Load history khusus user yang login
+        // Load history khusus user yang login (chat + imagine)
         loadChatSessions();
         currentChatId = createNewChatId();
         renderChatHistoryList();
+        loadImagineRequests();
         renderWelcomeMessage();
 
         closeAuthSheet();
@@ -1655,9 +2012,39 @@ let viewingOtherModels = false;
       return date.getDate() + ' ' + bulan[date.getMonth()];
     }
 
+    function buildHistoryItemHtml(entry) {
+      const safeTitle = escapeHtml(entry.title);
+      const safeId = escapeHtml(entry.id);
+      const inImagine = document.body.classList.contains('imagine-mode');
+
+      if (entry.type === 'imagine') {
+        // Hanya aktif di mode Imagine, dan hanya 1 entry yang cocok
+        const isActive = inImagine && viewingSingleImagineId === entry.id;
+        const iconClass = entry.mode === 'VIDEO' ? 'fa-video' : 'fa-image';
+        return `
+          <div class="history-item ${isActive ? 'active' : ''}" data-kind="imagine" data-id="${safeId}" onclick="loadImagineHistoryEntry('${entry.id}')">
+            <span class="history-bullet"><i class="fa-solid ${iconClass}"></i></span>
+            <span class="history-item-title">${safeTitle}</span>
+            <button type="button" class="history-item-delete" onclick="deleteImagineHistory(event, '${entry.id}')" title="Hapus riwayat ini" aria-label="Hapus riwayat ini">
+              <i class="fa-regular fa-trash-can"></i>
+            </button>
+          </div>`;
+      }
+
+      // Chat hanya aktif di mode Ask (bukan Imagine) — supaya tidak dobel highlight
+      const isActive = !inImagine && entry.id === currentChatId;
+      return `
+        <div class="history-item ${isActive ? 'active' : ''}" data-kind="chat" data-id="${safeId}" onclick="loadChatSession('${entry.id}')">
+          <span class="history-bullet"><i class="fa-solid fa-comment"></i></span>
+          <span class="history-item-title">${safeTitle}</span>
+          <button type="button" class="history-item-delete" onclick="deleteChatSession(event, '${entry.id}')" title="Hapus chat ini" aria-label="Hapus chat ini">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </div>`;
+    }
+
     function renderChatHistoryList() {
       const listEl = document.getElementById('chatHistory');
-      const countEl = document.getElementById('historyCount');
       if (!listEl) return;
 
       const chatItems = chatSessions.map(session => ({ type: 'chat', id: session.id, title: session.title, updatedAt: session.updatedAt }));
@@ -1665,50 +2052,135 @@ let viewingOtherModels = false;
       const imagineItems = [...imagineRequests.values()].map(item => ({
         type: 'imagine',
         id: item.request_id,
+        mode: item.mode,
         title: item.prompt || (item.mode === 'VIDEO' ? 'Buat video' : 'Buat gambar'),
-        updatedAt: new Date(item.created_at || Date.now()).getTime()
+        updatedAt: new Date(item.created_at || Date.now()).getTime() || Date.now()
       }));
 
       const combined = [...chatItems, ...imagineItems].sort((a, b) => b.updatedAt - a.updatedAt);
 
-      if (countEl) countEl.textContent = combined.length > 0 ? combined.length : '';
-
       if (combined.length === 0) {
-        listEl.innerHTML = '<div class="history-empty">Belum ada riwayat chat</div>';
+        const hint = currentUser
+          ? 'Obrolan dan hasil Imagine kamu akan muncul di sini.'
+          : 'Masuk ke akun untuk menyimpan obrolan kamu di sini.';
+        listEl.innerHTML = `<div class="history-empty"><i class="fa-regular fa-message"></i><strong>Belum ada riwayat</strong><span>${hint}</span></div>`;
         return;
       }
 
-      listEl.innerHTML = combined.map(entry => {
-        if (entry.type === 'imagine') {
-          const isActive = (document.body.classList.contains('imagine-mode') && viewingSingleImagineId === entry.id);
-          return `
-            <div class="history-item ${isActive ? 'active' : ''}" onclick="loadImagineHistoryEntry('${entry.id}')">
-              <span class="history-item-icon imagine-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
-              <span class="history-item-title">${escapeHtml(entry.title)}</span>
-              <span class="history-item-action">
-                <span class="history-item-time">${formatRelativeTime(entry.updatedAt)}</span>
-                <button class="history-item-delete" onclick="deleteImagineHistory(event, '${entry.id}')" title="Hapus riwayat ini">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </span>
-            </div>`;
+      const prevScroll = listEl.scrollTop;
+      listEl.innerHTML = combined.map(buildHistoryItemHtml).join('');
+      listEl.scrollTop = prevScroll;
+    }
+
+    // ===== Tekan-tahan baris riwayat -> konfirmasi hapus (seperti di aplikasi Claude) =====
+    var historyLongPressFired = false;
+    (function setupHistoryLongPress() {
+      const HOLD_MS = 550;
+      const MOVE_LIMIT = 10;
+      let timer = null;
+      let row = null;
+      let startX = 0;
+      let startY = 0;
+
+      function cancelPress() {
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (row) { row.classList.remove('pressing'); row = null; }
+      }
+
+      document.addEventListener('touchstart', (e) => {
+        historyLongPressFired = false;
+        const target = e.target.closest ? e.target.closest('.chat-history .history-item') : null;
+        if (!target || e.touches.length !== 1) { cancelPress(); return; }
+
+        row = target;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+
+        timer = setTimeout(() => {
+          timer = null;
+          historyLongPressFired = true;
+          setTimeout(() => { historyLongPressFired = false; }, 5000); // pengaman
+          try { if (navigator.vibrate) navigator.vibrate(15); } catch (err) {}
+          const kind = row ? row.dataset.kind : null;
+          const id = row ? row.dataset.id : null;
+          if (row) row.classList.remove('pressing');
+          row = null;
+          if (!id) return;
+          if (kind === 'imagine') deleteImagineHistory(null, id);
+          else deleteChatSession(null, id);
+        }, HOLD_MS);
+
+        // efek "ditekan" baru muncul sesaat kemudian supaya tap biasa tidak berkedip
+        setTimeout(() => { if (row === target && timer) target.classList.add('pressing'); }, 160);
+      }, { passive: true });
+
+      document.addEventListener('touchmove', (e) => {
+        if (!timer) return;
+        const t = e.touches[0];
+        if (Math.abs(t.clientX - startX) > MOVE_LIMIT || Math.abs(t.clientY - startY) > MOVE_LIMIT) cancelPress();
+      }, { passive: true });
+
+      document.addEventListener('touchend', (e) => {
+        cancelPress();
+        if (historyLongPressFired) {
+          if (e.cancelable) e.preventDefault(); // cegah "klik hantu" setelah tekan-tahan
+          setTimeout(() => { historyLongPressFired = false; }, 500);
         }
-        return `
-          <div class="history-item ${entry.id === currentChatId ? 'active' : ''}" onclick="loadChatSession('${entry.id}')">
-            <span class="history-item-icon"><i class="fa-solid fa-message"></i></span>
-            <span class="history-item-title">${escapeHtml(entry.title)}</span>
-            <span class="history-item-action">
-              <span class="history-item-time">${formatRelativeTime(entry.updatedAt)}</span>
-              <button class="history-item-delete" onclick="deleteChatSession(event, '${entry.id}')" title="Hapus chat ini">
-                <i class="fa-solid fa-trash"></i>
-              </button>
-            </span>
-          </div>`;
-      }).join('');
+      }, { passive: false });
+
+      document.addEventListener('touchcancel', () => {
+        cancelPress();
+        if (historyLongPressFired) setTimeout(() => { historyLongPressFired = false; }, 500);
+      }, { passive: true });
+
+      // Klik susulan setelah tekan-tahan diblokir supaya chat tidak ikut terbuka / dialog tidak kepencet
+      document.addEventListener('click', (e) => {
+        if (!historyLongPressFired) return;
+        e.stopPropagation();
+        e.preventDefault();
+      }, true);
+
+      // Cegah menu bawaan Android muncul saat tekan-tahan di baris riwayat
+      document.addEventListener('contextmenu', (e) => {
+        const onRow = e.target.closest && e.target.closest('.chat-history .history-item');
+        if (onRow && (timer || historyLongPressFired)) e.preventDefault();
+      });
+    })();
+
+    // ===== Menu akun (ketuk avatar) =====
+    function toggleAccountMenu(event) {
+      if (event) event.stopPropagation();
+      const menu = document.getElementById('accountMenu');
+      if (menu) menu.classList.toggle('open');
+    }
+
+    function closeAccountMenu() {
+      const menu = document.getElementById('accountMenu');
+      if (menu) menu.classList.remove('open');
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.account-menu') && !event.target.closest('.account-avatar-btn')) closeAccountMenu();
+    });
+
+    // ===== Menu Ask / Imagine di sidebar =====
+    function closeSidebarOnMobile() {
+      const sidebar = document.getElementById('sidebar');
+      if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open')) toggleSidebar();
+    }
+
+    function sidebarGoAsk() {
+      if (document.body.classList.contains('imagine-mode')) exitImagine();
+      closeSidebarOnMobile();
+    }
+
+    function sidebarGoImagine() {
+      if (!document.body.classList.contains('imagine-mode')) enterImagine();
+      closeSidebarOnMobile();
     }
 
     function deleteImagineHistory(event, requestId) {
-      event.stopPropagation();
+      if (event && event.stopPropagation) event.stopPropagation();
       
       showConfirmModal('Riwayat Imagine ini akan dihapus permanen dari HP kamu.', async () => {
         try {
@@ -1794,7 +2266,7 @@ let viewingOtherModels = false;
     }
 
     function deleteChatSession(event, id) {
-      event.stopPropagation();
+      if (event && event.stopPropagation) event.stopPropagation();
       showConfirmModal('Riwayat chat ini akan dihapus permanen dari HP kamu.', () => {
         chatSessions = chatSessions.filter(s => s.id !== id);
         saveChatSessions();
@@ -1814,6 +2286,7 @@ let viewingOtherModels = false;
         subscribeUserRealtime();
         refreshCurrentUserPremium();
         connectImagineStream();
+        loadImagineRequests(); // muat chat + imagine history dari awal
       }
 
       renderAccountUI();
@@ -2000,6 +2473,7 @@ let viewingOtherModels = false;
       const opening = !sidebar.classList.contains('open');
       sidebar.classList.toggle('open');
       overlay.classList.toggle('active');
+      if (!opening) closeAccountMenu();
       if (opening && historyListDirty) {
         renderChatHistoryList();
         historyListDirty = false;
@@ -2078,9 +2552,16 @@ let viewingOtherModels = false;
     }
 
     // ===== IMAGINE =====
-    function setImagineNav(active) {
-      document.getElementById('navAsk')?.classList.toggle('active', active === 'ASK');
-      document.getElementById('navImagine')?.classList.toggle('active', active === 'IMAGINE');
+    function setImagineNav(mode) {
+      const isImagine = String(mode || '').toUpperCase() === 'IMAGINE';
+      const navAsk = document.getElementById('navAsk');
+      const navImagine = document.getElementById('navImagine');
+      if (navAsk) navAsk.classList.toggle('active', !isImagine);
+      if (navImagine) navImagine.classList.toggle('active', isImagine);
+      const sideAsk = document.getElementById('sideNavAsk');
+      const sideImagine = document.getElementById('sideNavImagine');
+      if (sideAsk) sideAsk.classList.toggle('active', !isImagine);
+      if (sideImagine) sideImagine.classList.toggle('active', isImagine);
     }
 
     function updateImaginePlaceholder() {
@@ -2391,7 +2872,7 @@ let viewingOtherModels = false;
         </div>`;
     }
 
-    function renderImagineRequests() {
+    function renderImagineRequests(force = false) {
       const box = document.getElementById('imagineResults');
       if (!box) return;
 
@@ -2416,24 +2897,38 @@ let viewingOtherModels = false;
       const gallery = document.getElementById('imagineGallery');
       if (gallery) gallery.classList.toggle('is-hidden', items.length > 0);
 
-      // MODIFIKASI: Hide Teks Hero jika ada request/loading, tapi jangan sembunyikan hasil generate
+      imagineHasPending = allItems.some(item => item.status === 'queued' || item.status === 'processing');
+
       const heroText = document.getElementById('imagineHeroText');
       if (heroText) {
         const hasContent = items.length > 0 || imagineBusy || imagineHasPending;
         heroText.style.display = hasContent ? 'none' : 'block';
       }
 
-      imagineHasPending = allItems.some(item => item.status === 'queued' || item.status === 'processing');
       refreshImagineSendButton();
       refreshImagineQuotaBar();
+
+      // Cegah kedip: skip rebuild DOM jika data kartu tidak berubah
+      const renderKey = items.map(item => {
+        const st = String(item.status || '');
+        const url = String(item.result_url || '');
+        const media = String(item.media_url || '');
+        const createdAtMs = item.created_at ? new Date(item.created_at).getTime() : 0;
+        const elapsedMs = createdAtMs ? (Date.now() - createdAtMs) : 0;
+        const stallMs = (typeof IMAGINE_QUEUED_STALL_MS !== 'undefined') ? IMAGINE_QUEUED_STALL_MS : 120000;
+        const queuedTooLong = st === 'queued' && createdAtMs && elapsedMs > stallMs;
+        const heartbeatDead = !serverAlive && (st === 'queued' || st === 'processing');
+        const phase = queuedTooLong || heartbeatDead ? 'stalled' : st;
+        return [item.request_id, phase, url, media, item.result_type || '', item.prompt || ''].join('::');
+      }).join('||') + '|v:' + (viewingSingleImagineId || '') + '|n:' + items.length;
+
+      if (!force && renderKey === lastImagineRenderKey) return;
+      lastImagineRenderKey = renderKey;
 
       if (!items.length) {
   if (isSingleView) {
     box.style.display = 'grid';
     box.innerHTML = `
-      <div class="imagine-back-bar" onclick="exitSingleView()">
-        <i class="fa-solid fa-arrow-left"></i> Kembali ke Imagine
-      </div>
       <div class="imagine-empty">Data riwayat tidak ditemukan atau sudah dihapus.</div>`;
   } else {
     box.innerHTML = '';
@@ -2442,28 +2937,38 @@ let viewingOtherModels = false;
   return;
 }
 
-const backBarHtml = isSingleView
-  ? `<div class="imagine-back-bar" onclick="exitSingleView()">
-      <i class="fa-solid fa-arrow-left"></i> Kembali ke Imagine
-    </div>`
-  : '';
-
-box.style.display = 'grid';   // 👈 TAMBAHKAN BARIS INI (memunculkan kembali kotak)
-box.innerHTML = backBarHtml + items.map(item => {
+box.style.display = 'grid';
+box.innerHTML = items.map(item => {
         const isVideo = item.mode === 'VIDEO' || item.result_type === 'video';
         const mediaList = getImagineResultList(item);
         const completed = item.status === 'completed' && mediaList.length > 0;
         const failed = item.status === 'failed';
+        const cancelled = item.status === 'cancelled'
+          || item.status === 'cancel_requested'
+          || (typeof item.result_url === 'string' && item.result_url.startsWith('cancel://'));
         const reqId = escapeHtml(item.request_id || '');
 
         if (completed) {
-          return `<article class="imagine-result" data-request-id="${reqId}">
-            ${renderImagineMediaGroup(mediaList)}
+          const modeIcon = isVideo ? 'fa-video' : 'fa-image';
+          const modeLabel = isVideo ? 'Video' : 'Gambar';
+          return `<article class="imagine-result completed" data-request-id="${reqId}">
+            <div class="imagine-media-frame">
+              ${renderImagineMediaGroup(mediaList)}
+            </div>
             <div class="imagine-result-caption">
+              <div class="imagine-done-meta">
+                <span class="imagine-done-badge"><i class="fa-solid fa-check"></i> ${modeLabel} selesai</span>
+                <span class="imagine-done-mode"><i class="fa-solid ${modeIcon}"></i> ${modeLabel}</span>
+              </div>
               ${renderImagineReference(item)}
-              <span class="imagine-result-caption-label">${isVideo ? 'Video' : 'Gambar'} Telah Dibuat</span>
-              <span class="imagine-result-caption-text">${escapeHtml(item.prompt || '')}</span>
-              <span class="imagine-result-id">${reqId}</span>
+              <p class="imagine-done-prompt">
+                <span class="imagine-done-prompt-label">Prompt</span>
+                ${escapeHtml(item.prompt || 'Tanpa prompt')}
+              </p>
+              <div class="imagine-done-footer">
+                <span class="imagine-done-id">${reqId}</span>
+                <span class="imagine-done-chip">Pretvfx Imagine</span>
+              </div>
             </div>
           </article>`;
         }
@@ -2478,8 +2983,21 @@ box.innerHTML = backBarHtml + items.map(item => {
             <div class="imagine-result-header" style="display:flex;gap:12px;align-items:flex-start;">
               <div class="imagine-result-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
               <div>
-                <div class="imagine-result-title">Peringatan Konten Sensitif</div>
+                <div class="imagine-result-title">Peringatan</div>
                 <div class="imagine-result-status">${escapeHtml(warnMsg)}</div>
+                <div class="imagine-result-id">${reqId}</div>
+              </div>
+            </div>
+          </article>`;
+        }
+
+        if (cancelled) {
+          return `<article class="imagine-result" data-request-id="${reqId}">
+            <div class="imagine-result-header" style="display:flex;gap:12px;align-items:flex-start;">
+              <div class="imagine-result-icon"><i class="fa-solid fa-ban"></i></div>
+              <div>
+                <div class="imagine-result-title">Generate Dibatalkan</div>
+                <div class="imagine-result-status">Request ini dibatalkan. Kamu bisa generate ulang kapan saja.</div>
                 <div class="imagine-result-id">${reqId}</div>
               </div>
             </div>
@@ -2533,8 +3051,10 @@ box.innerHTML = backBarHtml + items.map(item => {
 
         const loadingTitle = isVideo ? 'Video sedang dibuat...' : 'Gambar sedang dibuat...';
         const loadingSub = isVideo
-          ? 'Pretvfx-AI sedang membuat video yang anda inginkan. Mohon jangan keluar dari aplikasi, agar proses berjalan dengan lancar.'
-          : 'Pretvfx-AI sedang membuat gambar yang anda inginkan. Mohon jangan keluar dari aplikasi, agar proses berjalan dengan lancar.';
+          ? 'Pretvfx-AI sedang merender video kamu. Tetap di aplikasi agar proses lancar.'
+          : 'Pretvfx-AI sedang merender gambar kamu. Tetap di aplikasi agar proses lancar.';
+        const modeLabel = isVideo ? 'Video' : 'Gambar';
+        const modeIcon = isVideo ? 'fa-video' : 'fa-image';
 
         return `<article class="imagine-result loading" data-request-id="${reqId}">
           <div class="imagine-loading-state">
@@ -2542,6 +3062,7 @@ box.innerHTML = backBarHtml + items.map(item => {
               <i class="fa-solid fa-wand-magic-sparkles"></i>
             </div>
             <div class="imagine-loading-text">
+              <span class="imagine-loading-kicker"><i class="fa-solid ${modeIcon}"></i> ${modeLabel}</span>
               <div class="imagine-loading-title">${loadingTitle}</div>
               <div class="imagine-loading-sub">${loadingSub}</div>
             </div>
@@ -2549,8 +3070,12 @@ box.innerHTML = backBarHtml + items.map(item => {
           <div class="imagine-progress"><div class="imagine-progress-bar"></div></div>
           <div class="imagine-loading-prompt">
             ${renderImagineReference(item)}
-            <div class="imagine-result-status">${escapeHtml(item.prompt || '')}</div>
-            <div class="imagine-result-id">${reqId}</div>
+            <span class="imagine-loading-prompt-label">Prompt</span>
+            <div class="imagine-result-status">${escapeHtml(item.prompt || 'Tanpa prompt')}</div>
+            <div class="imagine-loading-footer">
+              <span class="imagine-result-id">${reqId}</span>
+              <span class="imagine-loading-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+            </div>
           </div>
         </article>`;
       }).join('');
@@ -2560,23 +3085,26 @@ box.innerHTML = backBarHtml + items.map(item => {
       if (!item?.request_id) return;
       imagineRequests.set(item.request_id, item);
 
-      const isImagineMode = document.body.classList.contains('imagine-mode');
-
-      if (isImagineMode) {
+      if (document.body.classList.contains('imagine-mode')) {
         renderImagineRequests();
       }
 
+      // Selalu update daftar Terbaru (chat + imagine) saat sidebar terbuka
       historyListDirty = true;
       const sidebar = document.getElementById('sidebar');
-      
-      if (sidebar && sidebar.classList.contains('open') && isImagineMode) {
+      if (sidebar && sidebar.classList.contains('open')) {
         renderChatHistoryList();
         historyListDirty = false;
       }
     }
 
     async function loadImagineRequests() {
-      if (!currentUser) { imagineRequests.clear(); renderImagineRequests(); return; }
+      if (!currentUser) {
+        imagineRequests.clear();
+        renderImagineRequests();
+        renderChatHistoryList();
+        return;
+      }
       try {
         const { data, error } = await supabaseClient
           .from('imagine_requests')
@@ -2588,9 +3116,12 @@ box.innerHTML = backBarHtml + items.map(item => {
         imagineRequests.clear();
         (data || []).forEach(item => imagineRequests.set(item.request_id, item));
         renderImagineRequests();
+        renderChatHistoryList();
+        historyListDirty = false;
       } catch (error) {
         console.error('Imagine history:', error.message);
         renderImagineRequests();
+        renderChatHistoryList();
       }
     }
 
@@ -2649,22 +3180,88 @@ box.innerHTML = backBarHtml + items.map(item => {
       const input = document.getElementById('promptInput');
       if (!btn) return;
 
+      // Saat ada request pending: tombol jadi Batalkan (ikon kotak stop)
+      if (imagineHasPending && !imagineBusy) {
+        btn.disabled = false;
+        btn.style.display = 'flex';
+        btn.title = 'Batalkan generate';
+        btn.setAttribute('data-mode', 'cancel');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>';
+        return;
+      }
+
+      btn.setAttribute('data-mode', 'send');
+      btn.innerHTML = imagineBusy
+        ? '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:15px"></i>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>';
+
       const blocked = imagineBusy || imagineHasPending;
       btn.disabled = blocked || !input || input.value.trim().length === 0;
+      btn.style.display = 'flex';
 
       if (imagineBusy) btn.title = 'Mengirim...';
-      else if (imagineHasPending) btn.title = 'Menunggu hasil sebelumnya selesai...';
       else btn.title = 'Generate';
     }
 
     function setImagineBusy(busy) {
       imagineBusy = !!busy;
-      const btn = document.getElementById('btnSend');
-      if (!btn) return;
-      btn.innerHTML = imagineBusy
-        ? '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:15px"></i>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>';
       refreshImagineSendButton();
+    }
+
+    async function cancelImaginePending() {
+      if (!currentUser) return;
+      // Hanya request yang masih antri / diproses (bukan yang sudah cancel/failed)
+      const pending = [...imagineRequests.values()].filter(item => {
+        const s = String(item.status || '');
+        if (s !== 'queued' && s !== 'processing') return false;
+        if (typeof item.result_url === 'string' && item.result_url.startsWith('cancel://')) return false;
+        return true;
+      });
+      if (!pending.length) {
+        imagineHasPending = false;
+        refreshImagineSendButton();
+        return;
+      }
+
+      showConfirmModal(
+        'Generate yang anda buat sedang di proses latar belakang history. Apakah anda ingin membatalkan generate ini?',
+        async () => {
+          try {
+            for (const item of pending) {
+              // Pakai status "failed" + marker cancel:// agar lolos check constraint DB.
+              // Worker akan baca marker ini dan kirim notif Telegram saat server nyala.
+              const { data, error } = await supabaseClient
+                .from('imagine_requests')
+                .update({
+                  status: 'failed',
+                  result_url: 'cancel://pending',
+                  completed_at: new Date().toISOString()
+                })
+                .eq('id', item.id)
+                .in('status', ['queued', 'processing'])
+                .select('*')
+                .maybeSingle();
+              if (error) throw error;
+              if (data) upsertImagineRequest(data);
+              else {
+                item.status = 'failed';
+                item.result_url = 'cancel://pending';
+                upsertImagineRequest(item);
+              }
+            }
+            imagineHasPending = [...imagineRequests.values()].some(i => {
+              const s = String(i.status || '');
+              return s === 'queued' || s === 'processing';
+            });
+            renderImagineRequests();
+            refreshImagineSendButton();
+          } catch (err) {
+            console.error('Cancel imagine:', err);
+            showWarningModal(err?.message || 'Gagal membatalkan. Coba lagi.', 'Gagal Batalkan');
+          }
+        },
+        { title: 'Batalkan generate?', confirmText: 'Batalkan' }
+      );
     }
 
     function loadImagineHistoryEntry(requestId) {
@@ -3100,6 +3697,11 @@ box.innerHTML = backBarHtml + items.map(item => {
 
     async function sendMessage() {
       if (document.body.classList.contains('imagine-mode')) {
+        const btn = document.getElementById('btnSend');
+        if (btn && btn.getAttribute('data-mode') === 'cancel') {
+          await cancelImaginePending();
+          return;
+        }
         await submitImagine();
         return;
       }
@@ -3735,6 +4337,16 @@ box.innerHTML = backBarHtml + items.map(item => {
       try { voiceRecognition.start(); isVoiceRecording = true; updateMicButtonState(); } catch (error) {}
     }
 
+
+    function openProUpgradeModal() {
+      const el = document.getElementById('proUpgradeOverlay');
+      if (el) el.classList.add('show');
+    }
+    function closeProUpgradeModal() {
+      const el = document.getElementById('proUpgradeOverlay');
+      if (el) el.classList.remove('show');
+    }
+
     function updateComposerButtons() {
       const input = document.getElementById('promptInput');
       const btnSend = document.getElementById('btnSend');
@@ -4160,5 +4772,35 @@ box.innerHTML = backBarHtml + items.map(item => {
       responseMode = enabled ? 'deep' : 'short';
     }
   </script>
+
+  <div class="pro-modal-overlay" id="proUpgradeOverlay" onclick="if(event.target===this)closeProUpgradeModal()">
+    <div class="pro-modal" role="dialog" aria-modal="true" aria-labelledby="proUpgradeTitle">
+      <div class="pro-modal-head">
+        <div>
+          <h3 id="proUpgradeTitle">Upgrade to Pro</h3>
+          <p>Nikmati akses penuh Pretvfx-AI tanpa batas limit free.</p>
+        </div>
+        <button type="button" class="pro-modal-close" onclick="closeProUpgradeModal()" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <ul class="pro-benefit-list">
+        <li><i class="fa-solid fa-infinity"></i><span>Generate gambar dan video tanpa batas</span></li>
+        <li><i class="fa-solid fa-robot"></i><span>Akses ke semua model Pro AI</span></li>
+        <li><i class="fa-solid fa-bolt"></i><span>Limit token kuota lebih tinggi</span></li>
+        <li><i class="fa-solid fa-shield-halved"></i><span>Garansi 1 bulan pemakaian permanen</span></li>
+      </ul>
+      <div class="pro-contact-label">Hubungi admin untuk upgrade</div>
+      <div class="pro-contact-row">
+        <a class="pro-contact-btn wa" href="https://wa.me/6285713164894" target="_blank" rel="noopener noreferrer">
+          <i class="fa-brands fa-whatsapp"></i>
+          <span>WhatsApp<small>0857-1316-4894</small></span>
+        </a>
+        <a class="pro-contact-btn tg" href="https://t.me/Pretvfx_Real01" target="_blank" rel="noopener noreferrer">
+          <i class="fa-brands fa-telegram"></i>
+          <span>Telegram<small>t.me/Pretvfx_Real01</small></span>
+        </a>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
