@@ -4151,7 +4151,7 @@ box.innerHTML = items.map(item => {
           headers: { 'Content-Type': 'application/json' },
           signal,
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: 'ATURAN: Jawab sesuai pertanyaan user, jangan belok topik. Hitungan langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat: Zain Suryo Negoro (Developer AI). Jangan klaim dibuat Google/OpenAI/Anthropic.\n\n' + getModeStyleInstruction() }] },
+            systemInstruction: { parts: [{ text: 'ATURAN: Jawab sesuai pertanyaan user, jangan belok topik. Hitungan langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Namamu Pretvfx-AI (tulis persis begitu). Jika ditanya kamu siapa / namamu siapa, jawab singkat bahwa kamu Pretvfx-AI buatan Zain Suryo Negoro, contoh: Saya adalah Pretvfx-AI buatan Zain Suryo Negoro. Jika ditanya pembuat: Zain Suryo Negoro (Developer AI). Jangan klaim dibuat Google/OpenAI/Anthropic.\n\n' + getModeStyleInstruction() }] },
             contents: [{ role: 'user', parts }]
           })
         });
@@ -4171,7 +4171,7 @@ box.innerHTML = items.map(item => {
 
       function buildMessages(includeImages) {
         return [
-          { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Matematika langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Jika ditanya pembuat AI: Zain Suryo Negoro (Developer AI). Jangan klaim dibuat Google/OpenAI/Anthropic.' },
+          { role: 'system', content: 'ATURAN WAJIB: Jawab sesuai pertanyaan user, jangan belok topik. Matematika langsung dihitung. Ngobrol santai/curhat/basa-basi (misal "gabut", "capek", cerita perasaan) BUKAN pertanyaan tidak jelas — tanggapi natural kayak teman ngobrol asli, jangan nanya balik "maksud Anda apa?" atau "apakah ada yang bisa saya bantu?". Klarifikasi cuma buat tugas yang infonya beneran kurang. Pakai bahasa santai natural, ikutin gaya bahasa user. Jangan bahas pembuat AI kecuali user bertanya. Namamu Pretvfx-AI (tulis persis begitu). Jika ditanya kamu siapa / namamu siapa, jawab singkat bahwa kamu Pretvfx-AI buatan Zain Suryo Negoro, contoh: Saya adalah Pretvfx-AI buatan Zain Suryo Negoro. Jika ditanya pembuat AI: Zain Suryo Negoro (Developer AI). Jangan klaim dibuat Google/OpenAI/Anthropic.' },
           { role: 'system', content: getModeStyleInstruction() },
           ...trimmedHistory.map(msg => {
             const role = msg.role === 'assistant' ? 'assistant' : 'user';
@@ -4974,10 +4974,22 @@ box.innerHTML = items.map(item => {
 
     function resetSpeakButtonLabel(button) { if (button) button.innerHTML = '<i class="fa-solid fa-volume-high"></i><span>Suara</span>'; }
 
+    // Tulisan di layar tetap "Pretvfx-AI", tapi yang dikirim ke suara (TTS) dieja biar jelas.
+    // Kalau mau ubah cara bacanya, cukup edit dua teks di bawah ini.
+    const SPOKEN_PRETVFX = 'pre tivi ef ex';
+    const SPOKEN_PRETVFX_AI = 'pre tivi ef ex, e ai';
+
+    function fixSpeechPronunciation(text) {
+      return String(text || '').replace(
+        /\bpretvfx(?:[\s\-\u2011\u2013\u2014_]*(ai))?(?![a-z0-9])/gi,
+        (m, ai) => ai ? SPOKEN_PRETVFX_AI : SPOKEN_PRETVFX
+      );
+    }
+
     function nativeSpeak(text, onEnd) {
       if (window.AndroidTTS && typeof window.AndroidTTS.speak === 'function') {
         window.onNativeTTSEnd = function () { window.onNativeTTSEnd = null; if (onEnd) onEnd(); };
-        window.AndroidTTS.speak(text);
+        window.AndroidTTS.speak(fixSpeechPronunciation(text));
         return true;
       }
       return false;
@@ -5007,7 +5019,7 @@ box.innerHTML = items.map(item => {
       if (!('speechSynthesis' in window)) return false;
 
       const voice = pickSmoothVoice();
-      const chunks = splitIntoSpeechChunks(text);
+      const chunks = splitIntoSpeechChunks(fixSpeechPronunciation(text));
       if (!chunks.length) { if (onEnd) onEnd(); return true; }
 
       const mySession = speechSessionId;
