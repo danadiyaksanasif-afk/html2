@@ -1102,6 +1102,35 @@
 .message.no-anim { animation: none; }
 .message-media-omitted { display: inline-flex; align-items: center; gap: 7px; align-self: flex-end; padding: 6px 10px; border-radius: 10px; font-size: .74rem; color: #8b93a5; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); }
 .history-loading { flex: 1; min-height: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; color: #8b93a5; font-size: .88rem; }
+    /* Avatar Premium: background emas + badge mahkota */
+.account-avatar-btn.premium {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), 0 0 14px rgba(251, 191, 36, 0.45);
+  position: relative;
+}
+.account-avatar-btn.premium::after {
+  content: '\f521';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0c0d14;
+  color: #fbbf24;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #fbbf24;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  z-index: 2;
+}
+.account-avatar-btn.premium .account-avatar-inner {
+  filter: drop-shadow(0 1px 1px rgba(120, 53, 15, 0.4));
+}
   </style>
 </head>
 
@@ -1229,11 +1258,11 @@
     <div class="imagine-card-label"><i class="fa-solid fa-video"></i> Contoh Video</div>
   </article>
             <article class="imagine-card">
-    <img class="imagine-card-media" src="imagine1.png" alt="Contoh Gambar">
+    <img class="imagine-card-media" src="https://raw.githubusercontent.com/danadiyaksanasif-afk/upload-gambar/refs/heads/main/WA_1789872763393.jpeg" alt="Contoh Gambar">
     <div class="imagine-card-label"><i class="fa-regular fa-image"></i> Contoh Gambar</div>
   </article>
      <article class="imagine-card">
-    <img class="imagine-card-media" src="imagine2.png" alt="Contoh Gambar">
+    <img class="imagine-card-media" src="https://raw.githubusercontent.com/danadiyaksanasif-afk/upload-gambar/refs/heads/main/WA_1789873408391.jpeg" alt="Contoh Gambar">
     <div class="imagine-card-label"><i class="fa-regular fa-image"></i> Contoh Gambar</div>
   </article>         
             
@@ -1247,14 +1276,32 @@
     <div class="imagine-card-label"><i class="fa-solid fa-video"></i> Contoh Video</div>
   </article>
             <article class="imagine-card">
-    <img class="imagine-card-media" src="imagine3.png" alt="Contoh Gambar">
+    <img class="imagine-card-media" src="https://raw.githubusercontent.com/danadiyaksanasif-afk/upload-gambar/refs/heads/main/iamgine4.jpg" alt="Contoh Gambar">
     <div class="imagine-card-label"><i class="fa-regular fa-image"></i> Contoh Gambar</div>
   </article>
-     <article class="imagine-card">
-    <img class="imagine-card-media" src="imagine4.png" alt="Contoh Gambar">
+            <article class="imagine-card">
+    <img class="imagine-card-media" src="https://raw.githubusercontent.com/danadiyaksanasif-afk/upload-gambar/refs/heads/main/image-3.jpg" alt="Contoh Gambar">
     <div class="imagine-card-label"><i class="fa-regular fa-image"></i> Contoh Gambar</div>
-  </article>         
+  </article>
+             
+            <article class="imagine-card">
+    <img class="imagine-card-media" src="https://raw.githubusercontent.com/danadiyaksanasif-afk/upload-gambar/refs/heads/main/ssstik.io_1789871601337.webp" alt="Contoh Gambar">
+    <div class="imagine-card-label"><i class="fa-regular fa-image"></i> Contoh Gambar</div>
+  </article>
+            <article class="imagine-card">
+    <img class="imagine-card-media" src="https://raw.githubusercontent.com/danadiyaksanasif-afk/upload-gambar/refs/heads/main/ssstik.io_1789871812777.webp" alt="Contoh Gambar">
+    <div class="imagine-card-label"><i class="fa-regular fa-image"></i> Contoh Gambar</div>
+  </article> 
+            <article class="imagine-card">
+    <img class="imagine-card-media" src="https://raw.githubusercontent.com/danadiyaksanasif-afk/upload-gambar/refs/heads/main/ssstik.io_1789871741520.webp" alt="Contoh Gambar">
+    <div class="imagine-card-label"><i class="fa-regular fa-image"></i> Contoh Gambar</div>
+  </article>
+            <article class="imagine-card">
+    <img class="imagine-card-media" src="https://raw.githubusercontent.com/danadiyaksanasif-afk/upload-gambar/refs/heads/main/ssstik.io_1789871708448.webp" alt="Contoh Gambar">
+    <div class="imagine-card-label"><i class="fa-regular fa-image"></i> Contoh Gambar</div>
+  </article>
 </div>
+        
         </div>
       </div>
 
@@ -1579,7 +1626,8 @@ let viewingOtherModels = false;
     let userRealtimeChannel = null;
 
     let imagineMode = 'IMAGE';
-    let imagineRealtimeChannel = null;
+let imagineRealtimeChannel = null;
+let isLoggingOut = false; // <-- TAMBAHKAN INI
     const IMAGINE_BUCKET = 'imagine-media';
     let imagineRequests = new Map();
     let imagineBusy = false;
@@ -1653,41 +1701,52 @@ let viewingOtherModels = false;
     }
 
     function clearSession() {
-      currentUser = null;
-      localStorage.removeItem(USER_SESSION_KEY);
-      if (userRealtimeChannel) { supabaseClient.removeChannel(userRealtimeChannel); userRealtimeChannel = null; }
-      if (imagineRealtimeChannel) { supabaseClient.removeChannel(imagineRealtimeChannel); imagineRealtimeChannel = null; }
-    }
-
+  currentUser = null;
+  localStorage.removeItem(USER_SESSION_KEY);
+  
+  if (userRealtimeChannel) { 
+    supabaseClient.removeChannel(userRealtimeChannel); 
+    userRealtimeChannel = null; 
+  }
+  if (imagineRealtimeChannel) { 
+    supabaseClient.removeChannel(imagineRealtimeChannel); 
+    imagineRealtimeChannel = null; 
+  }
+  imagineChannelStatus = ''; // <-- reset status channel
+}
     function renderAccountUI() {
-      const container = document.getElementById('sidebarAccount');
-      if (!container) return;
+  const container = document.getElementById('sidebarAccount');
+  if (!container) return;
 
-      if (!currentUser) {
-        container.innerHTML = `
-          <button type="button" class="account-login-btn" onclick="openAuthSheet('login')">
-            <i class="fa-solid fa-right-to-bracket"></i>
-            Masuk
-          </button>`;
-        return;
-      }
+  if (!currentUser) {
+    container.innerHTML = `
+      <button type="button" class="account-login-btn" onclick="openAuthSheet('login')">
+        <i class="fa-solid fa-right-to-bracket"></i>
+        Masuk
+      </button>`;
+    return;
+  }
 
-      const initial = (currentUser.username || currentUser.email || '?').trim().charAt(0);
-      container.innerHTML = `
-        <div class="account-menu" id="accountMenu">
-          <div class="account-menu-head">
-            <div class="account-name">${escapeHtml(currentUser.username)}</div>
-            <div class="account-plan ${currentUser.is_premium ? 'premium' : 'free'}">
-              ${currentUser.is_premium ? '<i class="fa-solid fa-crown"></i> Premium' : 'Akun Free'}
-            </div>
-          </div>
-          <button type="button" class="account-menu-item" onclick="logoutUser()">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            Keluar akun
-          </button>
+  const initial = (currentUser.username || currentUser.email || '?').trim().charAt(0);
+  const isPremium = !!currentUser.is_premium;
+
+  container.innerHTML = `
+    <div class="account-menu" id="accountMenu">
+      <div class="account-menu-head">
+        <div class="account-name">${escapeHtml(currentUser.username)}</div>
+        <div class="account-plan ${isPremium ? 'premium' : 'free'}">
+          ${isPremium ? '<i class="fa-solid fa-crown"></i> Premium' : 'Akun Free'}
         </div>
-        <button type="button" class="account-avatar-btn" onclick="toggleAccountMenu(event)" aria-label="Menu akun">${escapeHtml(initial)}</button>`;
-    }
+      </div>
+      <button type="button" class="account-menu-item" onclick="logoutUser()">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Keluar akun
+      </button>
+    </div>
+    <button type="button" class="account-avatar-btn ${isPremium ? 'premium' : ''}" onclick="toggleAccountMenu(event)" aria-label="Menu akun">
+      <span class="account-avatar-inner">${escapeHtml(initial)}</span>
+    </button>`;
+}
 
 
     function openAuthSheet(mode) {
@@ -1820,21 +1879,32 @@ let viewingOtherModels = false;
     }
 
     function logoutUser() {
-      flushChatSaves();
-      chatMessagesCache.clear();
-      clearSession();
-      renderAccountUI();
-      renderModelList();
-      
-      // Bersihkan history dari layar saat logout
-      chatSessions = [];
-      currentChatId = null;
-      renderChatHistoryList();
-      renderWelcomeMessage();
-      if (document.body.classList.contains('imagine-mode')) {
-        exitImagine();
-      }
-    }
+  isLoggingOut = true;
+
+  // 1. Bersihkan data dari layar SEGERA (sebelum proses network)
+  chatSessions = [];
+  currentChatId = null;
+  imagineRequests.clear();
+  forcedVisibleImagineIds.clear();
+  viewingSingleImagineId = null;
+  lastImagineRenderKey = '';
+
+  // 2. Render layar kosong seketika
+  renderChatHistoryList();
+  renderImagineRequests(true);
+  renderWelcomeMessage();
+  if (document.body.classList.contains('imagine-mode')) exitImagine();
+
+  // 3. Baru proses pembersihan session & network
+  flushChatSaves();
+  chatMessagesCache.clear();
+  clearSession();
+  renderAccountUI();
+  renderModelList();
+
+  // 4. Reset flag setelah channel Realtime benar-benar mati
+  setTimeout(() => { isLoggingOut = false; }, 1500);
+}
 
     async function refreshCurrentUserPremium() {
       if (!currentUser) return;
@@ -3304,21 +3374,21 @@ box.innerHTML = items.map(item => {
     }
 
     function upsertImagineRequest(item) {
-      if (!item?.request_id) return;
-      imagineRequests.set(item.request_id, item);
+  if (isLoggingOut) return; // <-- TAMBAHKAN INI
+  if (!item?.request_id) return;
+  imagineRequests.set(item.request_id, item);
 
-      if (document.body.classList.contains('imagine-mode')) {
-        renderImagineRequests();
-      }
+  if (document.body.classList.contains('imagine-mode')) {
+    renderImagineRequests();
+  }
 
-      // Selalu update daftar Terbaru (chat + imagine) saat sidebar terbuka
-      historyListDirty = true;
-      const sidebar = document.getElementById('sidebar');
-      if (sidebar && sidebar.classList.contains('open')) {
-        renderChatHistoryList();
-        historyListDirty = false;
-      }
-    }
+  historyListDirty = true;
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar && sidebar.classList.contains('open')) {
+    renderChatHistoryList();
+    historyListDirty = false;
+  }
+}
 
     let lastImagineLoadAt = 0;
     let imagineChannelStatus = '';
@@ -3335,32 +3405,33 @@ box.innerHTML = items.map(item => {
     }
 
     async function loadImagineRequests() {
-      if (!currentUser) {
-        imagineRequests.clear();
-        renderImagineRequests();
-        renderChatHistoryList();
-        return;
-      }
-      try {
-        const { data, error } = await supabaseClient
-          .from('imagine_requests')
-          .select('*')
-          .eq('user_id', String(currentUser.id))
-          .order('created_at', { ascending: false })
-          .limit(30);
-        if (error) throw error;
-        imagineRequests.clear();
-        (data || []).forEach(item => imagineRequests.set(item.request_id, item));
-        lastImagineLoadAt = Date.now();
-        renderImagineRequests();
-        renderChatHistoryList();
-        historyListDirty = false;
-      } catch (error) {
-        console.error('Imagine history:', error.message);
-        renderImagineRequests();
-        renderChatHistoryList();
-      }
-    }
+  if (isLoggingOut) return; // <-- TAMBAHKAN INI
+  if (!currentUser) {
+    imagineRequests.clear();
+    renderImagineRequests();
+    renderChatHistoryList();
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient
+      .from('imagine_requests')
+      .select('*')
+      .eq('user_id', String(currentUser.id))
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (error) throw error;
+    imagineRequests.clear();
+    (data || []).forEach(item => imagineRequests.set(item.request_id, item));
+    lastImagineLoadAt = Date.now();
+    renderImagineRequests();
+    renderChatHistoryList();
+    historyListDirty = false;
+  } catch (error) {
+    console.error('Imagine history:', error.message);
+    renderImagineRequests();
+    renderChatHistoryList();
+  }
+}
 
     // Karena kalau server mati gak akan ada event Realtime baru sama sekali,
     // kita harus tetap render ulang secara berkala biar deteksi "stalled" jalan.
